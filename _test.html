@@ -34,7 +34,7 @@ let DOC = null;
 
 /* situazione pulita: nessun pannello aperto, fase di combattimento */
 function setup(g, opt){
-  ['reward','report','mystery','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  ['reward','report','mystery','artshow','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
   g.busy = false;
   g.phase = 'fight';
   g.endless = false;
@@ -56,7 +56,7 @@ function setup(g, opt){
 
 /* come setup, ma lascia in piedi la sfida estratta dal gioco */
 function setupRaw(g, opt){
-  ['reward','report','mystery','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  ['reward','report','mystery','artshow','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
   g.busy=false; g.phase='fight'; g.endless=false;
   g.artifacts = opt.artifacts || [];
   if (opt.attacks) g.attacks = Object.assign({fire:0,water:0,nature:0,light:0,darkness:0}, opt.attacks);
@@ -589,6 +589,22 @@ async function run(){
   check('e nello scaffale ne sono finite di piu- che con un boss normale',
         g.artifacts.length >= 1, g.artifacts.length);
   check('la sfida disarmata non si ripete', g.bossNerfed===false, g.bossNerfed);
+
+  head('L-artefatto si vede in grande');
+  setup(g,{wave:11, el:'nature', attacks:{fire:40}});
+  await killWith(g,'fire');
+  const offerte = DOC.querySelectorAll('#reward-inner .artifact-card');
+  const preso = D.ARTIFACTS.find(x => x.name === offerte[0].querySelector('.artifact-name').textContent);
+  offerte[0].click();
+  await nextTick(); await nextTick();
+  check('il pannello mostra nome e descrizione di quello raccolto',
+        DOC.getElementById('artshow-name').textContent===preso.name &&
+        DOC.getElementById('artshow-desc').textContent===preso.desc,
+        DOC.getElementById('artshow-name').textContent);
+  check('e la sua illustrazione, non un segnaposto',
+        DOC.getElementById('artshow-art').style.backgroundImage.indexOf(preso.img + '.webp') >= 0,
+        DOC.getElementById('artshow-art').style.backgroundImage);
+  check('il gioco non resta bloccato dietro al pannello', g.phase==='fight', g.phase);
 
   /* un boss normale continua a pagarne uno solo */
   setup(g,{wave:11, el:'fire', attacks:{fire:40}});

@@ -220,7 +220,7 @@ async function playOne(policy, smartMode, soloSlot){
   const won = g.phase === 'ending';
   const wave = g.wave;
   /* si chiudono i pannelli rimasti aperti */
-  ['reward','report','mystery','ending','gameover','gifshow'].forEach(id => { const n = DOC.getElementById(id); if (n) n.hidden = true; });
+  ['reward','report','mystery','artshow','ending','gameover','gifshow'].forEach(id => { const n = DOC.getElementById(id); if (n) n.hidden = true; });
   return { wave: wave, won: won, artifacts: g.artifacts.length, steps: steps };
 }
 

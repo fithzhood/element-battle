@@ -59,7 +59,8 @@ http://localhost:8158/_bot.html?runs=100&variant=W   solo spade (S: scudi, M: mi
                                                      B*: prende sempre la calma del saggio)
 http://localhost:8158/_bot.html?runs=100          bot che gioca e misura il bilanciamento
 http://localhost:8158/_shot.html?w=384&h=800&...  screenshot a misura di telefono
-   ...&drive=report|mystery                       le due schermate nuove
+   ...&drive=report|mystery|nerfed|artshow        le schermate nuove
+http://localhost:8158/_musica.html?scena=boss&posta=x.wav   rende la musica su file
    ...&freeze=1400                                congela le animazioni a un istante
 ```
 
@@ -103,6 +104,15 @@ riferimenti a css e js dentro l'html (adesso `v=4`).
   misterioso, un pannello dice cosa era rispetto ai pacchetti che si vedevano
   (`Empty hands` / `Thin` / `Fair` / `Rich` / `Double pack`) ed elenca gli
   attacchi presi. Prima era un bollino da 750 ms sulla carta.
+- **musica** (`Music` in `element.js`): sottofondo sintetizzato, nessun file.
+  Tappeto grave + arpeggio rado + basso, su pentatonica minore (non puo'
+  stonare con se stessa); la tonica segue l'elemento del mostro. Sui boss
+  70 → 104 bpm, basso su ogni tempo, eco a meta' tempo. Pulsante suo nella
+  barra in alto, separato dagli effetti. Livelli: picco −17/−14 dBFS.
+- **l'artefatto raccolto si vede in grande** (`showArtifactCard`): 272 px,
+  nome, descrizione e famiglia. Le illustrazioni sono 320² e nello scaffale si
+  vedono da 46: era l'unico modo di guardarle davvero. Vale anche per le
+  benedizioni, che nello scaffale non ci finiscono nemmeno.
 - **easter egg**: pressione lunga 3 secondi sullo stemma dell'elemento → zip di
   GIF → i mostri diventano quelle, premio a pieno schermo lungo quanto i PV.
   Solo nella versione completa.
@@ -123,6 +133,12 @@ senza motivo apparente. Adesso `setup()` azzera anche `skipChallenge`;
 `setupRaw()` no, perche' e' proprio quello che serve alla prova del saggio.
 Quando una verifica fallisce a intermittenza, il primo sospetto e' uno stato
 lasciato indietro, non il caso.
+
+**Il render della musica non finisce in headless.** `_musica.html` rende il
+sottofondo su un `OfflineAudioContext` e lo spedisce a un ricevitore locale
+(`ricevi.py` sulla 8159, perche' due MB di base64 non passano dal ponte
+JavaScript). Con `--virtual-time-budget` la pagina resta su RENDERING per
+sempre: il tempo finto non muove il thread audio. Va aperta nel browser vero.
 
 **I pannelli che aspettano un tocco.** Il resoconto dell'onda e il pacchetto
 misterioso si fermano finche' non si tocca il pulsante. Con `?fast` no: il

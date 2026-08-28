@@ -1,0 +1,92 @@
+<!doctype html><html><head><meta charset="utf-8"><title>musica</title>
+<style>body{font:13px/1.6 Consolas,monospace;background:#0b0d14;color:#dfe4ef;margin:0;padding:14px}
+iframe{position:fixed;left:-9999px;width:384px;height:800px;border:0}
+textarea{width:100%;height:120px;background:#05060c;color:#7f8798;border:0}</style></head>
+<body><pre id="p">RENDERING</pre><div id="out"></div>
+<script>
+/* Rende la musica del gioco su un OfflineAudioContext e la restituisce come WAV
+   in base64, dentro un <textarea> che si legge con --dump-dom.
+
+   Serve a due cose: riascoltare il sottofondo senza doverlo suonare dal vivo
+   (in headless non si sente niente), e misurarne il livello — una musica di
+   accompagnamento che passa il -12 dBFS di picco da' fastidio.
+
+     _musica.html?secondi=20&scena=calmo|boss&el=fire[&posta=nome.wav]
+
+   Attenzione: in Chrome headless con --virtual-time-budget il render NON
+   finisce mai (il tempo finto non muove il thread audio, e la pagina resta su
+   RENDERING). Questa pagina va aperta nel browser vero. */
+
+const q = new URLSearchParams(location.search);
+const SECONDI = +(q.get('secondi') || 20);
+const SCENA   = q.get('scena') || 'calmo';
+const EL      = q.get('el') || 'fire';
+const SR      = 44100;
+
+function wav(canale, sr){
+  const n = canale.length, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const scrivi = (off, s) => { for (let i=0;i<s.length;i++) v.setUint8(off+i, s.charCodeAt(i)); };
+  scrivi(0,'RIFF'); v.setUint32(4, 36+n*2, true); scrivi(8,'WAVEfmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  scrivi(36,'data'); v.setUint32(40, n*2, true);
+  for (let i=0;i<n;i++){ const s = Math.max(-1, Math.min(1, canale[i])); v.setInt16(44+i*2, s*32767, true); }
+  return new Uint8Array(buf);
+}
+function base64(bytes){
+  let s = '';
+  for (let i=0;i<bytes.length;i+=8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i+8192));
+  return btoa(s);
+}
+
+const f = document.createElement('iframe');
+f.src = 'element.html?auto&debug&fast';
+f.onload = () => setTimeout(async () => {
+  const M = f.contentWindow.__elMusic;
+  if (!M) { document.getElementById('p').textContent = 'CRASH: musica non esposta'; return; }
+
+  const off = new OfflineAudioContext(1, SR*SECONDI, SR);
+  M.ctx = off;
+  M.master = off.createGain();
+  M.master.gain.value = 1;
+  M.master.connect(off.destination);
+  M.boss = (SCENA === 'boss');
+  M.root = M.RADICE[EL];
+  M.tappeto();
+
+  let t = 0.25, n = 0;
+  while (t < SECONDI - 1) { M.passo(t, n++); t += M.durata(); }
+
+  const buf = await off.startRendering();
+  const dati = buf.getChannelData(0);
+  let picco = 0, somma = 0;
+  for (let i=0;i<dati.length;i++){ const a = Math.abs(dati[i]); if (a>picco) picco=a; somma += dati[i]*dati[i]; }
+  const rms = Math.sqrt(somma/dati.length);
+  const dB = x => (20*Math.log10(x||1e-9)).toFixed(1);
+
+  document.getElementById('p').textContent =
+    'DONE  scena=' + SCENA + ' el=' + EL + ' battute=' + n +
+    '  picco=' + dB(picco) + ' dBFS  rms=' + dB(rms) + ' dBFS' +
+    (picco >= 1 ? '  ATTENZIONE: satura' : '');
+  const byte = wav(dati, SR);
+
+  /* col parametro `posta` il file lo si manda a un ricevitore locale
+     (`_ricevi.py`, porta 8159): due megabyte di base64 non passano
+     dal ponte JavaScript */
+  if (q.get('posta')) {
+    try {
+      await fetch('http://127.0.0.1:8159/' + q.get('posta'), { method: 'POST', body: byte });
+      document.getElementById('p').textContent += '  ·  spedito a 8159';
+    } catch (e) {
+      document.getElementById('p').textContent += '  ·  ricevitore spento: ' + e;
+    }
+  } else {
+    const ta = document.createElement('textarea');
+    ta.id = 'b64';
+    ta.value = base64(byte);
+    document.getElementById('out').appendChild(ta);
+  }
+  document.title = 'DONE';
+}, 400);
+document.body.appendChild(f);
+</script></body></html>

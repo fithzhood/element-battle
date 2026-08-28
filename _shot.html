@@ -55,6 +55,25 @@ f.onload = () => setTimeout(async () => {
                             g.attack(q.get('with')||'fire'); }
   if (cmd === 'artifact') { g.wave = 11; g.nextElement = arg2El(q.get('el')); g.createEnemy(); g.enemy.hp = 0; g.victory(); await passaResoconto(); }
   /* boss arrivato senza sfida: paga piu' artefatti, e ne offre di piu' */
+  /* l'artefatto raccolto, in grande */
+  if (cmd === 'artshow')  { g.wave = +(q.get('wave') || 11); g.nextElement = arg2El(q.get('el'));
+                            g.createEnemy(); g.enemy.hp = 0; g.victory(); await passaResoconto();
+                            const doc = f.contentDocument;
+                            const carte = Array.from(doc.querySelectorAll('#reward-inner .artifact-card'));
+                            const voluto = q.get('art');
+                            const D2 = f.contentWindow.ElementData;
+                            let c = carte[0];
+                            if (voluto) {
+                              const nome = D2.ARTIFACT_BY_ID[voluto] && D2.ARTIFACT_BY_ID[voluto].name;
+                              /* la mano e' casuale: se non c'e' quello voluto lo si mette a forza */
+                              if (!carte.some(x => x.querySelector('.artifact-name').textContent === nome)) {
+                                c.querySelector('.artifact-name').textContent = nome;
+                                c.onclick = () => g.takeArtifact(D2.ARTIFACT_BY_ID[voluto]);
+                              } else {
+                                c = carte.find(x => x.querySelector('.artifact-name').textContent === nome);
+                              }
+                            }
+                            c.click(); await pausa(700); }
   if (cmd === 'nerfed')   { g.skipChallenge = true; g.wave = +(q.get('wave') || 21);
                             g.nextElement = arg2El(q.get('el')); g.createEnemy();
                             g.enemy.hp = 0; g.victory(); await passaResoconto(); }
