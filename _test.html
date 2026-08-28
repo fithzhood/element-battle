@@ -202,10 +202,16 @@ async function run(){
   check('quattro artefatti proposti', cards.length===4, cards.length);
   check('nessun pacchetto normale', DOC.querySelectorAll('#reward-inner .pack').length===0);
   check('il record si aggiorna anche sul boss', g.best.normal>=20 && g.best.normal>bestBefore, g.best.normal);
-  cards[0].click();
+  /* si sceglie una carta che sia arma o scudo: le benedizioni non finiscono nello scaffale */
+  const keep = Array.prototype.filter.call(cards, c => {
+    const a = D.ARTIFACTS.find(x => x.name === c.querySelector('.artifact-name').textContent);
+    return a && a.slot !== 'blessing';
+  })[0] || cards[0];
+  const isKeeper = keep !== cards[0] || D.ARTIFACTS.find(x => x.name === keep.querySelector('.artifact-name').textContent).slot !== 'blessing';
+  keep.click();
   await nextTick(); await nextTick();
   check('scelto l-artefatto si passa all-onda dopo', g.wave===12 && g.phase==='fight', g.wave+'/'+g.phase);
-  check('l-artefatto finisce nello scaffale', DOC.querySelectorAll('#shelf .shelf-item').length>=1);
+  check('l-artefatto finisce nello scaffale', !isKeeper || DOC.querySelectorAll('#shelf .shelf-item').length>=1);
 
   head('Boss: la benedizione del saggio salta la sfida successiva');
   g.skipChallenge = true;

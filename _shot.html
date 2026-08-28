@@ -23,6 +23,9 @@ f.onload = () => setTimeout(async () => {
     if (q.get('force')) { g.challenge = Object.assign({}, D.CHALLENGES.find(c => c.type === q.get('force')), {reflected:0}); g.applyChallengeEntry(); g.renderQuest(); g.renderAttacks(); }
   }
   if (cmd === 'reward')   { g.enemy.hp = 0; await g.victory(); }
+  if (cmd === 'hit')      { g.wave=+(q.get('wave')||40); g.nextElement=q.get('el')||'nature';
+                            g.attacks={fire:9,water:9,nature:9,light:9,darkness:9}; g.createEnemy();
+                            g.attack(q.get('with')||'fire'); }
   if (cmd === 'artifact') { g.wave = 11; g.nextElement = arg2El(q.get('el')); g.createEnemy(); g.enemy.hp = 0; await g.victory(); }
   if (cmd === 'shelf')    { ['w1f','s1w','w2dl','s2fl','b1'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.renderShelf(); }
   if (cmd === 'ending')   { g.wave = 91; ['w1f','s1w','w2dl'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.showEnding(); }
