@@ -41,18 +41,17 @@ const BAL = {
 
 /* Un nome per ogni elemento e per ognuno dei 10 livelli di illustrazione. */
 const MONSTER_NAMES = {
-    fire:     ['Ember Pup', 'Cinder Imp', 'Ash Warden', 'Magma Brute', 'Pyre Knight',
-               'Blaze Tyrant', 'Inferno Colossus', 'Solar Wyrm', 'Ruin of Cinders', 'The Everburning'],
-    water:    ['Tide Sprite', 'Brine Siren', 'Reef Stalker', 'Depth Warden', 'Maelstrom Hound',
-               'Abyss Sovereign', 'Storm Leviathan', 'Drowned Titan', 'Wrath of the Deep', 'The Endless Tide'],
-    nature:   ['Sapling Wisp', 'Thorn Kit', 'Bramble Beast', 'Root Golem', 'Grove Warden',
-               'Elder Bough', 'Verdant Colossus', 'Worldtree Scion', 'Bloom of Ages', 'The Green Eternal'],
-    light:    ['Glim Mote', 'Dawn Spark', 'Halo Wisp', 'Prism Herald', 'Lantern Seraph',
-               'Radiant Judge', 'Solar Choir', 'Zenith Warden', 'Crown of Dawn', 'The First Light'],
-    darkness: ['Gloom Mite', 'Shade Crawler', 'Umbral Stalker', 'Void Reaver', 'Nightmare Baron',
-               'Eclipse Warden', 'Abyssal Horror', 'Dread Sovereign', 'Throne of Night', 'The Last Dark']
+    fire:     ['Ember Whelp', 'Cinder Hound', 'Blaze Courser', 'Magma Saurian', 'Pyre Golem',
+               'Ashen Cerberus', 'Searing Horror', 'Flame Effigy', 'Cinder Dragon', 'The Everburning'],
+    water:    ['Tide Sprite', 'Squall Maw', 'Reef Stalker', 'Glacier Brute', 'Brine Siren',
+               'Abyss Sovereign', 'Bilge Amphibian', 'Tide Maiden', 'Wave Serpent', 'The Endless Tide'],
+    nature:   ['Leaf Sprout', 'Thornleaf', 'Moss Golem', 'Snapping Bloom', 'Grove Warden',
+               'Thorn Reaver', 'Rose Matriarch', 'Worldtree Scion', 'Verdant Wyrm', 'The Green Eternal'],
+    light:    ['Glim Mote', 'Dawn Swarm', 'Halo Wisp', 'Prism Golem', 'Radiant Phoenix',
+               'Rainbow Chimera', 'Lumen Effigy', 'Zenith Knight', 'Dawn Drake', 'The First Light'],
+    darkness: ['Gloom Mite', 'Gloom Maw', 'Umbral Serpent', 'Void Reaver', 'Nightwing Baron',
+               'Devouring Eye', 'Abyssal Horror', 'Dread Reaper', 'Nightfall Dragon', 'The Last Dark']
 };
-
 /* Livello di illustrazione da punti vita massimi: 10-19 -> 1, 20-29 -> 2, ... 100+ -> 10.
    (Il vecchio gioco saltava il livello 3: cinque illustrazioni non uscivano mai.) */
 function artTier(maxHp) {

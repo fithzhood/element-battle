@@ -164,12 +164,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     text-shadow: 0 2px 10px rgba(0, 0, 0, .8);
 }
 #boss-ribbon {
-    padding: 2px 8px; border-radius: 6px; font-size: .58rem; font-weight: 800; letter-spacing: .22em;
-    background: linear-gradient(100deg, #ff3b30, #ff9500);
-    color: #1a0500; box-shadow: 0 0 16px rgba(255, 90, 40, .7);
-    animation: bossPulse 1.6s ease-in-out infinite;
+    padding: 3px 10px; border-radius: 6px; font-size: .62rem; font-weight: 900; letter-spacing: .26em;
+    background: linear-gradient(100deg, #c1121f, #ff6b1a 60%, #ffb347);
+    color: #1a0500;
+    box-shadow: 0 0 22px rgba(255, 80, 20, .85), inset 0 0 0 1px rgba(255, 220, 170, .5);
+    animation: ribbonBeat 1.7s ease-in-out infinite;
 }
-@keyframes bossPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
+@keyframes ribbonBeat {
+    0%, 100% { filter: brightness(1); transform: scale(1); }
+    50%      { filter: brightness(1.5); transform: scale(1.06); }
+}
 
 /* barra dei punti vita */
 #hpbar {
@@ -233,17 +237,53 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     100% { transform: none; opacity: 1; filter: none; }
 }
 #app.boss #portrait {
+    animation: idle 5s ease-in-out infinite, bossPulse 2.8s ease-in-out infinite;
+}
+/* respiro dell'aura: lento e pesante, non allegro */
+@keyframes bossPulse {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 0 2px rgba(255, 190, 120, .55),
+            0 0 0 1px #000,
+            0 18px 50px -12px rgba(0, 0, 0, .95),
+            0 0 46px -10px var(--el);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 0 3px rgba(255, 225, 165, .95),
+            0 0 0 1px #000,
+            0 18px 50px -12px rgba(0, 0, 0, .95),
+            0 0 96px 4px var(--el);
+    }
+}
+
+/* corona di energia che gira dietro al ritratto */
+#app.boss #portrait-wrap::before,
+#app.boss #portrait-wrap::after {
+    content: ''; position: absolute; inset: -7%;
+    border-radius: 34px; pointer-events: none; z-index: 0;
+    background: conic-gradient(from 0deg,
+        transparent 0deg, var(--el) 22deg, transparent 62deg,
+        transparent 160deg, var(--el-glow) 190deg, transparent 232deg,
+        transparent 300deg, var(--el) 330deg, transparent 360deg);
+    filter: blur(20px);
+    opacity: .5;
+    animation: bossSpin 9s linear infinite;
+}
+#app.boss #portrait-wrap::after {
+    inset: -3%; filter: blur(34px); opacity: .34;
+    animation: bossSpin 14s linear reverse infinite;
+}
+@keyframes bossSpin { to { transform: rotate(360deg); } }
+
+/* dentro la cornice il buio si chiude sul mostro */
+#app.boss #portrait-frame {
     box-shadow:
-        inset 0 0 0 2px rgba(255, 220, 160, .55),
-        0 0 0 1px rgba(0, 0, 0, .8),
-        0 18px 50px -12px rgba(0, 0, 0, .9),
-        0 0 60px -8px var(--el);
-    animation: idle 5s ease-in-out infinite, bossAura 2.4s ease-in-out infinite;
+        inset 0 0 70px -12px rgba(24, 0, 0, .95),
+        inset 0 0 0 2px rgba(255, 150, 80, .45);
 }
-@keyframes bossAura {
-    0%, 100% { outline: 0 solid rgba(255, 180, 90, 0); outline-offset: 0; }
-    50%      { outline: 3px solid rgba(255, 180, 90, .28); outline-offset: 6px; }
-}
+#app.boss #portrait { z-index: 1; }
+#app.boss #enemy-name { color: #ffd9a8; text-shadow: 0 0 18px rgba(255, 120, 40, .8), 0 2px 10px #000; }
 
 /* stemma dell'elemento (bersaglio della pressione lunga) */
 #badge {
@@ -282,19 +322,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 /* ------ scaffale degli artefatti ------ */
 
-#shelf { display: flex; gap: 6px; overflow-x: auto; padding: 1px 0; flex: 0 0 auto; scrollbar-width: none; }
+#shelf { display: flex; gap: 7px; overflow-x: auto; padding: 2px 0; flex: 0 0 auto; scrollbar-width: none; }
 #shelf::-webkit-scrollbar { display: none; }
 .shelf-item {
     position: relative; flex: 0 0 auto;
-    width: 34px; height: 34px; border-radius: 10px; overflow: hidden;
-    background: linear-gradient(140deg, var(--a1), var(--a2));
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .26);
+    width: 46px; height: 46px; border-radius: 11px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), 0 2px 8px -3px #000;
 }
-.shelf-item.shield  { border-radius: 10px 10px 14px 14px; }
-.shelf-item.blessing { border-radius: 50%; }
 .shelf-n {
-    position: absolute; right: 1px; bottom: 0; font-size: .58rem; font-weight: 800;
-    text-shadow: 0 1px 2px #000;
+    position: absolute; right: 2px; bottom: 1px; font-size: .62rem; font-weight: 800;
+    text-shadow: 0 1px 3px #000, 0 0 6px #000;
 }
 
 .thumb { width: 100%; height: 100%; background-size: cover; background-position: center; }
@@ -410,24 +447,32 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 /* chi arriva dopo, e cosa gli si fa */
 #reward-next {
     display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; border-radius: 14px;
+    padding: 9px 13px; border-radius: 14px;
     background: linear-gradient(100deg, rgba(255,255,255,.13), rgba(255,255,255,.04));
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
+    box-shadow: inset 0 0 0 1px var(--n, rgba(255,255,255,.2)), 0 0 30px -14px var(--n);
 }
 #reward-next .rn-lbl {
-    font-size: .55rem; letter-spacing: .2em; text-transform: uppercase;
-    opacity: .55; font-weight: 800; line-height: 1.1; max-width: 52px;
+    font-size: .55rem; letter-spacing: .18em; text-transform: uppercase;
+    opacity: .5; font-weight: 800; line-height: 1.15; max-width: 46px;
 }
-#reward-next .rn-sigil { display: flex; font-size: 34px; margin-left: auto; }
+#reward-next .rn-sigil { display: flex; font-size: 36px; margin-left: auto; }
+#reward-next .rn-main { display: flex; flex-direction: column; margin-right: auto; }
 #reward-next .rn-name {
-    font-size: 1.5rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase;
-    margin-right: auto;
+    font-size: 1.45rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase;
+    line-height: 1.05; color: var(--n, #fff); text-shadow: 0 0 26px var(--n, #fff);
+}
+#reward-next .rn-meta {
+    font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+    opacity: .55; font-weight: 700; margin-top: 2px;
+}
+#reward-next .rn-boss {
+    padding: 3px 7px; border-radius: 6px; font-size: .54rem; font-weight: 800; letter-spacing: .18em;
+    background: linear-gradient(100deg, #ff3b30, #ff9500); color: #1a0500;
+    box-shadow: 0 0 14px rgba(255, 90, 40, .7);
 }
 #reward-next.fire     { --n: #ff8a4a } #reward-next.water  { --n: #4fc3f7 }
 #reward-next.nature   { --n: #6cdc74 } #reward-next.light  { --n: #ffd166 }
 #reward-next.darkness { --n: #b49bff }
-#reward-next .rn-name { color: var(--n, #fff); text-shadow: 0 0 26px var(--n, #fff); }
-#reward-next { box-shadow: inset 0 0 0 1px var(--n, rgba(255,255,255,.2)), 0 0 30px -14px var(--n); }
 
 #reward-legend { display: flex; flex-direction: column; gap: 3px; }
 .leg-row {
@@ -437,12 +482,19 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     font-size: .72rem;
 }
 .leg-row .leg-sigil { display: flex; font-size: 15px; }
-.leg-name { width: 62px; font-weight: 700; letter-spacing: .02em; }
+.leg-name { width: 58px; font-weight: 700; letter-spacing: .02em; }
+.leg-have {
+    display: flex; align-items: baseline; gap: 3px; width: 54px;
+    font-variant-numeric: tabular-nums;
+}
+.leg-have b { font-size: .88rem; font-weight: 900; }
+.leg-have-lbl { font-size: .5rem; letter-spacing: .08em; text-transform: uppercase; opacity: .45; }
+.leg-have.zero { opacity: .35; }
 .leg-dmg {
     min-width: 26px; text-align: right; font-size: .95rem; font-weight: 900;
     font-variant-numeric: tabular-nums;
 }
-.leg-note { flex: 1; font-size: .66rem; opacity: .55; line-height: 1.2; }
+.leg-note { flex: 1; font-size: .6rem; opacity: .5; line-height: 1.15; }
 .leg-row.super {
     background: rgba(255, 255, 255, .13);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);

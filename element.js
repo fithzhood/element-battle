@@ -717,13 +717,20 @@ class Game {
        vanno mostrati qui, non lasciati da ricordare a memoria. */
     renderNextPanel(conLegenda) {
         const prossimo = this.nextElement;
+        /* l'onda non e' ancora stata incrementata: il prossimo nemico e' wave+1 */
+        const ondaDopo = this.wave + 1;
+        const pvDopo = 10 + (ondaDopo - 1);
+        const boss = D.isBossHp(pvDopo);
+
         const box = this.dom.rewardNext;
         box.hidden = false;
-        box.className = prossimo;
+        box.className = prossimo + (boss ? ' is-boss' : '');
         const slot = box.querySelector('.rn-sigil');
         slot.innerHTML = '';
         slot.appendChild(sigil(prossimo));
         box.querySelector('.rn-name').textContent = ELEMENT_INFO[prossimo].label;
+        box.querySelector('.rn-meta').textContent = 'wave ' + ondaDopo + ' · ' + pvDopo + ' hp';
+        box.querySelector('.rn-boss').hidden = !boss;
 
         const leg = this.dom.rewardLegend;
         leg.innerHTML = '';
@@ -739,11 +746,18 @@ class Game {
             chip.appendChild(sigil(e));
             riga.appendChild(chip);
             riga.appendChild(el('span', 'leg-name', ELEMENT_INFO[e].label));
+
+            const hai = el('span', 'leg-have');
+            hai.appendChild(el('b', null, String(this.attacks[e] || 0)));
+            hai.appendChild(el('span', 'leg-have-lbl', 'in hand'));
+            if ((this.attacks[e] || 0) === 0) hai.classList.add('zero');
+            riga.appendChild(hai);
+
             riga.appendChild(el('b', 'leg-dmg', String(this.previewDamage(e, prossimo))));
 
             let nota = '';
-            if (e === 'light')    nota = 'and gives back a random attack';
-            if (e === 'darkness') nota = '14 if you chain it, but costs another attack';
+            if (e === 'light')    nota = 'gives back a random attack';
+            if (e === 'darkness') nota = 'costs another attack · 14 chained';
             riga.appendChild(el('span', 'leg-note', nota));
             leg.appendChild(riga);
         });
