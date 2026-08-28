@@ -187,6 +187,18 @@ Cosa dicono i numeri, onestamente:
   quanto paga il boss dopo: e' **non far pagare la scelta** (la si prende
   *oltre* all'artefatto, non al posto suo). Da misurare.
 
+**0-ter. La mano di partenza (28 ago 2026, sera).** Si comincia con **5 per
+tipo**, luce e buio compresi (prima erano 0). E' una richiesta esplicita, ma il
+prezzo e' alto e va detto: **la campagna completata passa dal 30% al 99%**
+(100 partite, gioco forte), e chi passa l'onda 11 arriva in fondo praticamente
+sempre. Il motivo e' la luce: costa quasi zero (spendi 1, ne torna 1 a caso),
+quindi partire con cinque luci significa partire con un motore. Anche il gioco
+distratto passa dal ~3% al 28%.
+
+Se un giorno si vuole tornare a una partita tesa senza togliere luce e buio
+dalla mano, le leve nell'ordine: **2 o 3 di luce/buio** invece di 5, oppure
+rendere la luce meno gratuita (il rimborso non a colpo sicuro).
+
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21
 non muore più — le ultime 60 onde non hanno attrito. La causa non sono i

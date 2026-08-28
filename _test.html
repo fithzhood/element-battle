@@ -553,6 +553,9 @@ async function run(){
         D.ELEMENTS.every(e => g.attacks[e]===1+D.BAL.blessingGrant),
         primaBened+' -> '+g.totalAttacks());
   check('e non finisce nello scaffale', g.artifacts.indexOf(prosperita)<0);
+  const calma = D.ARTIFACT_BY_ID['b2'];
+  check('la calma del saggio dice quanti artefatti paga il boss disarmato',
+        calma.desc.indexOf('pays ' + D.BAL.nerfedPicks + ' artifacts') >= 0, calma.desc);
 
   head('Boss disarmato: paga due artefatti');
   g.skipChallenge = true;
