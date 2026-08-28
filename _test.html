@@ -308,14 +308,23 @@ async function run(){
   /* -------------------------------------------------- uovo di pasqua */
   if (CLEAR) {
     head('Versione clear: dell-uovo non deve restare niente');
-    check('nessun metodo per chiedere lo zip', typeof g.askZip === 'undefined');
-    check('nessun metodo per caricarlo',       typeof g.loadZip === 'undefined');
-    check('nessuna pressione lunga collegata', typeof g.bindEasterEgg === 'undefined');
-    const srcC = await fetch('element-clear.js').then(r=>r.text());
-    ['DecompressionStream','gifsFromZip','askZip','bindEasterEgg','}, 3000)'].forEach(t=>
-      check('nel sorgente non compare ' + t, srcC.indexOf(t) < 0));
-    check('la modalita GIF resta spenta', g.gifMode === false);
-    check('il pulsante Art resta nascosto', DOC.getElementById('btn-change').hidden === true);
+    check('nessun metodo per chiedere l-archivio', typeof g.askZip === 'undefined');
+    check('nessun metodo per caricarlo',           typeof g.loadZip === 'undefined');
+    check('nessuna pressione lunga collegata',     typeof g.bindEasterEgg === 'undefined');
+    check('nessuna modalita nascosta nello stato', typeof g.gifMode === 'undefined');
+    check('nessun premio a pieno schermo',         typeof g.playVictoryGif === 'undefined');
+    check('nessun pulsante per cambiare figure',   DOC.getElementById('btn-change') === null);
+    check('nessun contenitore per le animazioni',  DOC.getElementById('gif-slot') === null);
+    const files = await Promise.all(['element-clear.js','element-clear.css','element-clear.html']
+        .map(f => fetch(f).then(r => r.text())));
+    const nomi = ['js','css','html'];
+    files.forEach((t, i) => {
+        const ripulito = t.replace(/JSON\.stringify/g, '');
+        ['gif','zip','easter','DecompressionStream'].forEach(parola => {
+            const n = (ripulito.match(new RegExp(parola, 'gi')) || []).length;
+            check('nel ' + nomi[i] + ' non compare mai "' + parola + '"', n === 0, n || '');
+        });
+    });
   } else {
   head('Easter egg: archivio ZIP di GIF');
   check('lo stemma dell-elemento e il bersaglio', !!DOC.getElementById('badge'));

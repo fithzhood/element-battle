@@ -1,7 +1,5 @@
-/* Element Battle — versione clear, senza l'easter egg delle GIF.
-   NON si modifica a mano: si rigenera con costruisci-clear.py. */
-/* Element Battle — motore di gioco.
-   Dipende da element-data.js (window.ElementData). */
+/* Element Battle — motore.
+   File generato: non si modifica a mano. */
 (function () {
 'use strict';
 
@@ -180,11 +178,6 @@ const Particles = {
     }
 };
 
-/* ------------------------------------------------------- lettura file zip */
-
-
-/* Estrae le sole .gif da uno zip, senza librerie esterne (funziona anche offline). */
-
 /* ==================================================================== gioco */
 
 class Game {
@@ -203,7 +196,6 @@ class Game {
             hpText:    $('#hp-text'),
             portrait:  $('#portrait'),
             art:       $('#portrait-art'),
-            gifSlot:   $('#gif-slot'),
             badge:     $('#badge'),
             ribbon:    $('#boss-ribbon'),
             shelf:     $('#shelf'),
@@ -216,22 +208,17 @@ class Game {
             rewardTtl: $('#reward-title'),
             rewardNext: $('#reward-next'),
             rewardLegend: $('#reward-legend'),
-            gifshow:   $('#gifshow'),
             ending:    $('#ending'),
             endlessTag: $('#endless-tag'),
             over:      $('#gameover'),
             overText:  $('#gameover-score'),
             toast:     $('#toast'),
-            sound:     $('#btn-sound'),
-            changeBtn: $('#btn-change')
+            sound:     $('#btn-sound')
         };
 
         Particles.init($('#particles'));
 
         this.best     = this.loadBest();
-        this.gifMode  = false;
-        this.gifs     = [];
-        this.usedGifs = new Set();
         this.phase    = 'idle';
         this.busy     = false;
 
@@ -247,7 +234,7 @@ class Game {
             const b = JSON.parse(localStorage.getItem(HS_KEY));
             if (b && typeof b.normal === 'number') return b;
         } catch (e) { /* niente */ }
-        return { normal: 10, gif: 10 };
+        return { normal: 10 };
     }
 
     saveBest() { localStorage.setItem(HS_KEY, JSON.stringify(this.best)); }
@@ -374,23 +361,12 @@ class Game {
         this.questFailed = false;
         this.resetQuestState();
 
-        if (this.gifMode && this.gifs.length) this.assignGif();
-
         this.pickQuestOrChallenge();
         this.renderAll();
         if (this.enemy.boss) { Sfx.boss(); this.dom.portrait.classList.add('boss-enter');
                                setTimeout(() => this.dom.portrait.classList.remove('boss-enter'), 900); }
         this.save();
         if (this.totalAttacks() === 0) this.gameOver();
-    }
-
-    assignGif() {
-        let pool = this.gifs.filter(g => !this.usedGifs.has(g));
-        if (!pool.length) { this.usedGifs.clear(); pool = this.gifs; }
-        const g = rand(pool);
-        this.usedGifs.add(g);
-        this.enemy.gif = g;
-        this.enemy.frozen = null;
     }
 
     /* -------------------------------------------------- quest e sfide boss */
@@ -527,8 +503,6 @@ class Game {
             }
         }
 
-        if (this.gifMode && this.enemy.gif) await this.playGifBurst(dmg);
-
         if (this.enemy.hp <= 0) { await this.victory(); return; }
 
         this.save();
@@ -627,7 +601,7 @@ class Game {
 
         /* record: vale anche per i boss (nel vecchio gioco i boss non contavano) */
         const score = this.enemy.maxHp;
-        const key = this.gifMode ? 'gif' : 'normal';
+        const key = 'normal';
         if (score > this.best[key]) { this.best[key] = score; this.saveBest(); this.renderTop(); this.toast('New record: ' + score); }
 
         if (this.questIsComplete()) this.grantQuestReward();
@@ -779,7 +753,6 @@ class Game {
         await sleep(mysteryKind ? 750 : 120);
 
         this.dom.reward.hidden = true;
-        await this.playVictoryGif();
 
         Object.keys(pack).forEach(e => {
             this.attacks[e] += pack[e];
@@ -833,7 +806,6 @@ class Game {
         this.busy = true;
         Sfx.tap();
         this.dom.reward.hidden = true;
-        await this.playVictoryGif();
 
         /* bottino del boss: senza, l'onda del boss e' l'unica che non paga nulla */
         if (D.BAL.bossPack) {
@@ -870,7 +842,7 @@ class Game {
         $('#ending-stats').innerHTML =
             '<span><b>' + this.wave + '</b>waves cleared</span>' +
             '<span><b>' + this.artifacts.length + '</b>artifacts</span>' +
-            '<span><b>' + (this.gifMode ? this.best.gif : this.best.normal) + '</b>best score</span>';
+            '<span><b>' + this.best.normal + '</b>best score</span>';
         this.dom.ending.hidden = false;
         Sfx.reward();
         setTimeout(() => Sfx.reward(), 320);
@@ -895,71 +867,9 @@ class Game {
         Sfx.over();
         this.dom.overText.innerHTML =
             'You fell at <b>wave ' + this.wave + '</b><br><span>best score ' +
-            (this.gifMode ? this.best.gif : this.best.normal) + '</span>';
+            this.best.normal + '</span>';
         this.dom.over.hidden = false;
         this.renderAttacks();
-    }
-
-
-
-
-
-    switchToNormal() {
-        this.gifMode = false;
-        this.enemy.gif = null;
-        this.enemy.frozen = null;
-        this.dom.changeBtn.hidden = true;
-        this.renderAll();
-    }
-
-    /* mostra la GIF animata per `damage` secondi, poi torna al fermo immagine */
-    playGifBurst(damage) {
-        if (!this.gifMode || !this.enemy.gif || this.enemy.hp <= 0) return Promise.resolve();
-        this.busy = true;
-        this.renderAttacks();
-        this.dom.gifSlot.innerHTML = '';
-        const img = el('img', 'gif-live');
-        img.src = this.enemy.gif;
-        this.dom.gifSlot.appendChild(img);
-        return new Promise(res => {
-            setTimeout(() => {
-                this.busy = false;
-                this.showFrozenGif();
-                this.renderAttacks();
-                res();
-            }, ms(damage * 1000));
-        });
-    }
-
-    showFrozenGif() {
-        if (!this.gifMode || !this.enemy.gif) return;
-        this.dom.gifSlot.innerHTML = '';
-        const canvas = el('canvas', 'gif-frozen');
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width; canvas.height = img.height;
-            canvas.getContext('2d').drawImage(img, 0, 0);
-        };
-        img.src = this.enemy.gif;
-        this.dom.gifSlot.appendChild(canvas);
-    }
-
-    /* GIF a pieno schermo come premio: dura quanto i PV massimi, più l'eccesso di danno */
-    playVictoryGif() {
-        if (!this.gifMode || !this.enemy || !this.enemy.gif) return Promise.resolve();
-        const extra = this.enemy.hp < 0 ? Math.abs(this.enemy.hp) * 2 : 0;
-        const secs  = this.enemy.maxHp + extra;
-        this.phase = 'gifshow';
-        this.dom.gifshow.innerHTML = '';
-        const img = el('img');
-        img.src = this.enemy.gif;
-        this.dom.gifshow.appendChild(img);
-        this.dom.gifshow.hidden = false;
-        return new Promise(res => setTimeout(() => {
-            this.dom.gifshow.hidden = true;
-            this.dom.gifshow.innerHTML = '';
-            res();
-        }, ms(secs * 1000)));
     }
 
     /* ------------------------------------------------------------ rendering */
@@ -974,7 +884,7 @@ class Game {
     }
 
     renderTop() {
-        this.dom.best.textContent = this.gifMode ? this.best.gif : this.best.normal;
+        this.dom.best.textContent = this.best.normal;
         this.dom.wave.textContent = this.wave;
         this.dom.endlessTag.hidden = !this.endless;
         this.dom.nextChip.className = 'chip next ' + this.nextElement;
@@ -999,10 +909,6 @@ class Game {
         this.dom.badge.appendChild(sigil(e.element));
         this.dom.portrait.classList.toggle('defeated', e.hp <= 0);
 
-        this.dom.gifSlot.innerHTML = '';
-        this.dom.gifSlot.hidden = !(this.gifMode && e.gif);
-        this.dom.art.hidden = !!(this.gifMode && e.gif);
-        if (this.gifMode && e.gif) this.showFrozenGif();
     }
 
     renderHp() {
@@ -1155,7 +1061,6 @@ class Game {
         $('#btn-menu').onclick     = () => { this.dom.over.hidden = true; this.showStart(); };
         $('#btn-endless').onclick  = () => this.startEndless();
         $('#btn-ending-menu').onclick = () => { this.dom.ending.hidden = true; this.showStart(); };
-        this.dom.changeBtn.onclick = () => this.switchToNormal();
         this.dom.sound.onclick     = () => {
             const on = Sfx.toggle();
             this.dom.sound.classList.toggle('muted', !on);

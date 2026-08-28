@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Element Battle</title>
 <link rel="icon" href="Element.png">
-<link rel="stylesheet" href="element.css?v=3">
+<link rel="stylesheet" href="element-clear.css?v=3">
 </head>
 <body>
 
@@ -62,7 +62,6 @@
       <div class="chip wave"><span class="lbl">WAVE</span><span id="wave-val">1</span></div>
       <div class="chip endless" id="endless-tag" hidden>∞</div>
       <div class="spacer"></div>
-      <button id="btn-change" class="chip ghost" hidden>Art</button>
       <button id="btn-sound" class="chip icon" aria-label="Sound on">
         <svg viewBox="0 0 24 24" class="ico"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/><path class="wave1" d="M15.5 9a4.2 4.2 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="wave2" d="M18.3 6.4a8 8 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="slash" d="M4 20 20 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
       </button>
@@ -84,7 +83,6 @@
       <div id="portrait-wrap">
         <div id="portrait">
           <div id="portrait-art"></div>
-          <div id="gif-slot" hidden></div>
           <div id="portrait-frame"></div>
           <button id="badge" aria-label="Enemy element"></button>
         </div>
@@ -116,8 +114,6 @@
       <div id="reward-inner"></div>
     </div>
   </div>
-
-  <div id="gifshow" class="overlay" hidden></div>
 
   <div id="ending" class="overlay" hidden>
     <div class="overlay-box narrow ending-box">
