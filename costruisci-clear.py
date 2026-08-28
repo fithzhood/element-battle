@@ -18,8 +18,14 @@ import sys
 
 # `(?<!strin)` perche' JSON.stringify contiene "gif" e farebbe scattare
 # l'allarme su codice che non c'entra niente
+# Alla versione clear non deve interessare NIENTE di quello che succede
+# all'uovo di Pasqua: non una parola, non una riga di codice, nemmeno una che
+# ne descriva il meccanismo con altri nomi. Oltre alle parole ovvie ci sono
+# quelle degli attrezzi che servono solo a lui — leggere un archivio compresso
+# e fabbricare indirizzi per i dati letti.
 VIETATE = [r'(?<!strin)gif', 'zip', 'easter', 'DecompressionStream',
-           'longPress', r', 3000\)']
+           'longPress', r', 3000\)',
+           'inflate', 'ObjectURL', 'frozen', 'usedGif', 'blob:']
 # per togliere righe di commento e regole css basta la parola nuda
 VIETATE_RIGHE = ['gif', 'zip', 'easter', 'DecompressionStream', 'longPress']
 
@@ -37,8 +43,11 @@ SOSTITUZIONI = [
     ("        return { normal: 10, gif: 10 };", "        return { normal: 10 };"),
     ("        if (this.gifMode && this.gifs.length) this.assignGif();\n", ''),
     ("        if (this.gifMode && this.enemy.gif) await this.playGifBurst(dmg);\n\n", ''),
-    ("        const key = this.gifMode ? 'gif' : 'normal';",
-     "        const key = 'normal';"),
+    # non basta spegnere la scelta: `const key = 'normal'` usato come indice e'
+    # codice che nessuno scriverebbe, e si vede che manca un ramo
+    ("        const key = this.gifMode ? 'gif' : 'normal';\n"
+     "        if (score > this.best[key]) { this.best[key] = score;",
+     "        if (score > this.best.normal) { this.best.normal = score;"),
     ("        await this.playVictoryGif();\n", ''),
     ("(this.gifMode ? this.best.gif : this.best.normal)", "this.best.normal"),
     ("this.dom.best.textContent = this.gifMode ? this.best.gif : this.best.normal;",
@@ -111,6 +120,9 @@ def pulisci_js():
     js = '\n'.join(r for r in js.split('\n')
                    if not (r.strip().startswith('/*') and re.search('|'.join(VIETATE), r, re.I)))
     js = re.sub(r'\n{3,}', '\n\n', js)
+    # Una riga vuota appena prima di una graffa chiusa e' la cicatrice del
+    # taglio: si vede che li' dentro c'era dell'altro.
+    js = re.sub(r'\n[ \t]*\n([ \t]*\})', r'\n\1', js)
     # via l'intestazione originale INTERA: e' un commento su piu' righe, e
     # togliendone solo la prima resta una riga orfana e il file non compila
     if js.lstrip().startswith('/*'):
@@ -175,6 +187,13 @@ def main():
             n = len(re.findall(parola, testo, re.I))
             if n:
                 guai.append(f'{nome}: "{parola}" x{n}')
+        # Le parole non bastano: un metodo puo' chiamarsi in modo innocente e
+        # restare citato da qualche parte. Nessun nome tolto deve sopravvivere
+        # da nessuna parte, nemmeno dentro un commento o una chiamata orfana.
+        for nome_tolto in FUNZIONI_MODULO + METODI:
+            n = len(re.findall(r'\b' + re.escape(nome_tolto), testo))
+            if n:
+                guai.append(f'{nome}: resta il nome "{nome_tolto}" x{n}')
     if guai:
         print('\nNIENTE SCRITTO, sono rimaste tracce:')
         for g in guai:

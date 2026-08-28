@@ -327,11 +327,28 @@ async function run(){
     const nomi = ['js','css','html'];
     files.forEach((t, i) => {
         const ripulito = t.replace(/JSON\.stringify/g, '');
-        ['gif','zip','easter','DecompressionStream'].forEach(parola => {
+        /* le parole del meccanismo, e anche quelle degli attrezzi che servono
+           solo a lui: leggere un archivio compresso e fabbricare indirizzi */
+        ['gif','zip','easter','DecompressionStream','inflate','ObjectURL',
+         'frozen','longPress'].forEach(parola => {
             const n = (ripulito.match(new RegExp(parola, 'gi')) || []).length;
             check('nel ' + nomi[i] + ' non compare mai "' + parola + '"', n === 0, n || '');
         });
+        /* e nessuno dei nomi tolti, nemmeno citato in un commento o in una
+           chiamata orfana: le parole da sole non bastano */
+        ['bindEasterEgg','askZip','loadZip','assignGif','gifNodes','switchToNormal',
+         'playGifBurst','showFrozenGif','playVictoryGif','inflateRaw','gifsFromZip']
+        .forEach(nome => {
+            const n = (t.match(new RegExp('\b' + nome, 'g')) || []).length;
+            check('nel ' + nomi[i] + ' non resta il nome ' + nome, n === 0, n || '');
+        });
     });
+    /* nessuna cicatrice del taglio: righe vuote appiccicate a una graffa chiusa,
+       o codice che nessuno scriverebbe (un indice che vale sempre lo stesso) */
+    check('niente riga vuota rimasta prima di una graffa',
+          !new RegExp('\\n[ \\t]*\\n[ \\t]*\\}').test(files[0]));
+    check('il record non passa piu- per un indice che non varia',
+          !/const key = /.test(files[0]) && !/best\[/.test(files[0]));
   } else {
   head('Easter egg: archivio ZIP di GIF');
   const src = await fetch('element.js').then(r=>r.text());

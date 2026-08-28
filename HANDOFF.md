@@ -214,6 +214,23 @@ il chip `next` finiva fuori schermo. Ora gli interruttori di suoni e musica
 stanno **dentro il pannello `?`** e Art e' un'icona: restano 44 px di margine a
 360 e 68 a 384. `_shot.html?drive=barra` lo misura e lo scrive nel titolo.
 
+**Alla clear non deve interessare NIENTE dell'uovo.** Non una parola, non una
+riga, nemmeno una che ne descriva il meccanismo con altri nomi. Il guardiano
+adesso controlla tre cose invece di una:
+
+1. le **parole** del segreto, piu' quelle degli attrezzi che servono solo a lui
+   (`inflate`, `ObjectURL`, `frozen`, `usedGif`, `blob:`);
+2. che **nessuno dei nomi tolti** sopravviva da nessuna parte — un metodo puo'
+   chiamarsi in modo innocente e restare citato in un commento o in una chiamata
+   orfana, e le parole da sole non lo prendono;
+3. le **cicatrici del taglio**: una riga vuota appiccicata a una graffa chiusa,
+   e codice che nessuno scriverebbe. Il record passava per
+   `const key = 'normal'` usato come indice: un indice che non varia dice che
+   li' c'era un ramo in piu'. Ora la sostituzione riscrive la riga intera.
+
+Le stesse tre cose le ricontrolla `_test.html?target=clear`, che legge i file
+generati: cosi' non ci si affida solo allo strumento che li ha scritti.
+
 **Il generatore della clear va tenuto al passo.** Due difetti trovati insieme il
 28 ago: ritagliava l'html per **stringa esatta** (un pulsante riscritto su tre
 righe restava dentro) e quando non trovava un pezzo si limitava a stampare un
