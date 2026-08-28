@@ -256,6 +256,8 @@ class Game {
             reward:    $('#reward'),
             rewardIn:  $('#reward-inner'),
             rewardTtl: $('#reward-title'),
+            rewardNext: $('#reward-next'),
+            rewardLegend: $('#reward-legend'),
             gifshow:   $('#gifshow'),
             ending:    $('#ending'),
             endlessTag: $('#endless-tag'),
@@ -516,6 +518,14 @@ class Game {
         return d;
     }
 
+    /* danno che farebbe un attacco contro `target` in un combattimento nuovo:
+       niente catena del buio (si riparte da zero) e niente sfida del boss in corso */
+    previewDamage(element, target) {
+        let d = D.baseDamage(element, target, false, false);
+        this.artifacts.forEach(a => { if (a.bonus && a.bonus[element]) d += a.bonus[element]; });
+        return d;
+    }
+
     totalAttacks() { return ELEMENTS.reduce((s, e) => s + (this.attacks[e] || 0), 0); }
 
     /* ------------------------------------------------------------ attacco */
@@ -702,8 +712,46 @@ class Game {
         return p;
     }
 
+    /* Intestazione della schermata di ricompensa: si sceglie in funzione di CHI
+       arriva dopo, quindi il prossimo nemico e la tabella dei danni contro di lui
+       vanno mostrati qui, non lasciati da ricordare a memoria. */
+    renderNextPanel(conLegenda) {
+        const prossimo = this.nextElement;
+        const box = this.dom.rewardNext;
+        box.hidden = false;
+        box.className = prossimo;
+        const slot = box.querySelector('.rn-sigil');
+        slot.innerHTML = '';
+        slot.appendChild(sigil(prossimo));
+        box.querySelector('.rn-name').textContent = ELEMENT_INFO[prossimo].label;
+
+        const leg = this.dom.rewardLegend;
+        leg.innerHTML = '';
+        leg.hidden = !conLegenda;
+        if (!conLegenda) return;
+
+        ELEMENTS.forEach(e => {
+            const riga = el('div', 'leg-row ' + e);
+            if (D.isSuperEffective(e, prossimo)) riga.classList.add('super');
+            else if (D.isNotEffective(e, prossimo)) riga.classList.add('weak');
+
+            const chip = el('span', 'leg-sigil');
+            chip.appendChild(sigil(e));
+            riga.appendChild(chip);
+            riga.appendChild(el('span', 'leg-name', ELEMENT_INFO[e].label));
+            riga.appendChild(el('b', 'leg-dmg', String(this.previewDamage(e, prossimo))));
+
+            let nota = '';
+            if (e === 'light')    nota = 'and gives back a random attack';
+            if (e === 'darkness') nota = '14 if you chain it, but costs another attack';
+            riga.appendChild(el('span', 'leg-note', nota));
+            leg.appendChild(riga);
+        });
+    }
+
     showPackages() {
         this.phase = 'reward';
+        this.renderNextPanel(true);
         const size = this.packSize();
         const made = [];
         const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
@@ -782,6 +830,7 @@ class Game {
 
     showArtifacts() {
         this.phase = 'artifact';
+        this.renderNextPanel(false);
         const pool = D.ARTIFACTS.slice();
         const picks = [];
         for (let i = 0; i < 4 && pool.length; i++) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);

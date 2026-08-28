@@ -22,7 +22,8 @@ f.onload = () => setTimeout(async () => {
     g.createEnemy();
     if (q.get('force')) { g.challenge = Object.assign({}, D.CHALLENGES.find(c => c.type === q.get('force')), {reflected:0}); g.applyChallengeEntry(); g.renderQuest(); g.renderAttacks(); }
   }
-  if (cmd === 'reward')   { g.enemy.hp = 0; await g.victory(); }
+  if (cmd === 'reward')   { if (q.get('next')) g.nextElement = q.get('next');
+                            g.enemy.hp = 0; await g.victory(); }
   if (cmd === 'hit')      { g.wave=+(q.get('wave')||40); g.nextElement=q.get('el')||'nature';
                             g.attacks={fire:9,water:9,nature:9,light:9,darkness:9}; g.createEnemy();
                             g.attack(q.get('with')||'fire'); }

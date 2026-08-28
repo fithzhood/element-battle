@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Element Battle</title>
 <link rel="icon" href="Element.png">
-<link rel="stylesheet" href="element.css?v=1">
+<link rel="stylesheet" href="element.css?v=2">
 </head>
 <body>
 
@@ -103,6 +103,12 @@
   <div id="reward" class="overlay" hidden>
     <div class="overlay-box">
       <h2 id="reward-title">Choose your spoils</h2>
+      <div id="reward-next" hidden>
+        <span class="rn-lbl">next enemy</span>
+        <span class="rn-sigil"></span>
+        <span class="rn-name">—</span>
+      </div>
+      <div id="reward-legend" hidden></div>
       <div id="reward-inner"></div>
     </div>
   </div>
@@ -136,7 +142,7 @@
   <div id="toast"></div>
 </div>
 
-<script src="element-data.js?v=1"></script>
-<script src="element.js?v=1"></script>
+<script src="element-data.js?v=2"></script>
+<script src="element.js?v=2"></script>
 </body>
 </html>
