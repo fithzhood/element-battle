@@ -744,6 +744,15 @@ async function run(){
   await nextTick(); await nextTick();
   check('e si passa subito all-onda dopo', g.wave===12 && g.phase==='fight', g.wave+'/'+g.phase);
 
+  head('Versione in schermata');
+  g.showStart();
+  const ver = DOC.getElementById('start-ver').textContent;
+  check('la schermata iniziale dichiara una versione', /^v(\d+|dev)$/.test(ver), ver);
+  const attesa = (DOC.querySelector('script[src*="element"]').getAttribute('src').match(/\d+/) || ['dev'])[0];
+  check('ed e- quella con cui il gioco e- stato caricato davvero',
+        ver === 'v' + attesa, ver + ' / atteso v' + attesa);
+  DOC.getElementById('start').hidden = true;
+
   /* ----------------------------------------------------- salvataggio */
   head('Salvataggio');
   g.newGame();
