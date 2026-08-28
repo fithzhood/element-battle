@@ -1,0 +1,273 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Element Battle — bilanciamento</title>
+<style>
+ body{font:13px/1.55 Consolas,monospace;background:#0b0d14;color:#dfe4ef;margin:0;padding:14px}
+ iframe{position:fixed;left:-9999px;width:384px;height:800px;border:0}
+ h3{color:#8fb7ff;margin:16px 0 4px}
+ pre{margin:0;white-space:pre-wrap}
+ .bar{color:#6fe07a}
+</style></head><body>
+<div id="out"><pre id="p">RUNNING</pre></div>
+<script>
+localStorage.setItem('elementBattle.sound','off');
+
+const out = document.getElementById('out');
+const P = document.getElementById('p');
+function say(t){ const d=document.createElement('pre'); d.textContent=t; out.appendChild(d); }
+function title(t){ const d=document.createElement('h3'); d.textContent=t; out.appendChild(d); }
+
+const q = new URLSearchParams(location.search);
+const RUNS  = +(q.get('runs')  || 120);
+const CAP   = +(q.get('cap')   || 4000);   /* tetto di azioni per partita */
+
+let f, W, D, g, DOC;
+
+function boot(){
+  return new Promise(res=>{
+    f=document.createElement('iframe');
+    f.src='element.html?auto&debug&fast';
+    f.onload=()=>setTimeout(()=>{
+      W=f.contentWindow; D=W.ElementData; g=W.__el; DOC=f.contentDocument;
+      /* niente effetti: il banco deve solo misurare */
+      W.__elFx.burst = ()=>{};
+      g.shake=()=>{}; g.flashPortrait=()=>{}; g.floatDamage=()=>{};
+      g.floatOnButton=()=>{}; g.toast=()=>{};
+      res();
+    }, 80);
+    document.body.appendChild(f);
+  });
+}
+const tick = () => new Promise(r=>setTimeout(r,0));
+
+/* ------------------------------------------------------------ politiche */
+
+/* costo netto in attacchi di un colpo */
+function cost(e){
+  if (e === 'light') return 0.02;                       /* spendi 1, ne guadagni 1 */
+  if (e === 'darkness')
+    return D.ELEMENTS.some(x => x !== 'darkness' && g.attacks[x] > 0) ? 2 : 1;
+  return 1;
+}
+
+/* resa stimata di un elemento, tenendo conto della catena del buio */
+function yieldOf(e, dmg, hp){
+  if (e !== 'darkness') return dmg[e] / cost(e);
+  const n = Math.max(1, Math.min(g.attacks.darkness, Math.ceil(hp / 14)));
+  const chained = g.lastAttack === 'darkness';
+  const total = chained ? 14 * n : 7 + 14 * (n - 1);
+  return total / (cost(e) * n);
+}
+
+/* gioco forte: sfrutta le quest, evita gli sprechi, incatena il buio */
+function smart(){
+  const hp = g.enemy.hp;
+  const avail = D.ELEMENTS.filter(e => g.attacks[e] > 0);
+  if (!avail.length) return null;
+  const dmg = {}; avail.forEach(e => dmg[e] = g.damageOf(e));
+  const best = list => list.slice().sort((a,b) => yieldOf(b,dmg,hp) - yieldOf(a,dmg,hp))[0];
+
+  let pool = avail.slice();
+  const qu = g.quest;
+
+  if (qu && !g.questFailed) {
+    const single = qu.type === 'singleType' || /Specialist$/.test(qu.type);
+    if (single) {
+      let want = null;
+      if (g.qs.usedType) want = g.qs.usedType;
+      else if (qu.element) want = qu.element;
+      else {
+        let bn = Infinity;
+        avail.forEach(e => {
+          const n = Math.ceil(hp / dmg[e]);
+          if (n <= g.attacks[e] && n < bn) { bn = n; want = e; }
+        });
+      }
+      /* si insegue la quest solo se quel tipo basta davvero a chiudere */
+      if (want && g.attacks[want] >= Math.ceil(hp / dmg[want])) pool = [want];
+    }
+    if (qu.type === 'noSuperEffective') {
+      const ok = pool.filter(e => !D.isSuperEffective(e, g.enemy.element));
+      if (ok.length) pool = ok;
+    }
+    if (qu.type === 'useAllTypes') {
+      const unused = D.ELEMENTS.filter(e => !g.qs.usedElements.includes(e) && g.attacks[e] > 0);
+      if (unused.length && D.ELEMENTS.every(e => g.attacks[e] > 0 || g.qs.usedElements.includes(e))) {
+        const safe = unused.filter(e => dmg[e] < hp);
+        return safe.length ? best(safe) : best(unused);
+      }
+    }
+    if (qu.type.indexOf('lastHit_') === 0) {
+      const t = qu.type.split('_')[1];
+      if (g.attacks[t] > 0) {
+        if (hp <= dmg[t]) return t;
+        const notKill = pool.filter(e => dmg[e] < hp);
+        if (notKill.length) pool = notKill;
+      }
+    }
+    if (qu.type === 'exactZero') {
+      const exact = pool.filter(e => dmg[e] === hp);
+      if (exact.length) return best(exact);
+      const under = pool.filter(e => dmg[e] < hp);
+      if (under.length) pool = under;
+    }
+  }
+
+  const killers = pool.filter(e => dmg[e] >= hp);
+  if (killers.length) {
+    killers.sort((a,b) => (cost(a) - cost(b)) || ((dmg[a] - hp) - (dmg[b] - hp)));
+    return killers[0];
+  }
+  return best(pool);
+}
+
+/* gioco distratto: sempre il colpo che fa piu' danno, quest ignorate */
+function greedy(){
+  const avail = D.ELEMENTS.filter(e => g.attacks[e] > 0);
+  if (!avail.length) return null;
+  return avail.sort((a,b) => g.damageOf(b) - g.damageOf(a))[0];
+}
+
+/* ------------------------------------------------------- scelte a schermo */
+
+const W_EL = { light: 9, darkness: 6, fire: 5, water: 5, nature: 5 };
+
+function readPack(node){
+  const p = {};
+  node.querySelectorAll('.pack-chip').forEach(c => {
+    const el = D.ELEMENTS.find(e => c.classList.contains(e));
+    p[el] = +c.querySelector('b').textContent;
+  });
+  return p;
+}
+function packValue(p){ return Object.keys(p).reduce((s,e) => s + p[e] * W_EL[e], 0); }
+
+function choosePack(smartMode){
+  const nodes = Array.from(DOC.querySelectorAll('#reward-inner .pack'));
+  const normals = nodes.filter(n => !n.classList.contains('mystery'));
+  const mystery = nodes.find(n => n.classList.contains('mystery'));
+  if (!smartMode) return nodes[0];
+  let bestNode = normals[0], bestVal = -1;
+  normals.forEach(n => { const v = packValue(readPack(n)); if (v > bestVal) { bestVal = v; bestNode = n; } });
+  const size = Math.floor(g.enemy.maxHp / 10);
+  const mysteryEV = 1.05 * size * 5.6;
+  return (mystery && mysteryEV > bestVal) ? mystery : bestNode;
+}
+
+function artifactValue(a){
+  if (a.slot === 'shield')   return 60 + Object.keys(a.regen).reduce((s,e) => s + a.regen[e], 0) * 20;
+  if (a.slot === 'weapon')   return 20 + Object.keys(a.bonus).reduce((s,e) => s + a.bonus[e], 0) * 4;
+  if (a.grant)               return 34;
+  return 8;
+}
+function chooseArtifact(smartMode){
+  const cards = Array.from(DOC.querySelectorAll('#reward-inner .artifact-card'));
+  if (!smartMode) return cards[0];
+  let bn = cards[0], bv = -1;
+  cards.forEach(c => {
+    const name = c.querySelector('.artifact-name').textContent;
+    const a = D.ARTIFACTS.find(x => x.name === name);
+    const v = a ? artifactValue(a) : 0;
+    if (v > bv) { bv = v; bn = c; }
+  });
+  return bn;
+}
+
+/* ------------------------------------------------------------- partita */
+
+async function playOne(policy, smartMode){
+  g.newGame();
+  let steps = 0;
+  while (steps++ < CAP) {
+    if (g.phase === 'gameover' || g.phase === 'ending') break;
+    if (g.busy) { await tick(); continue; }
+
+    if (g.phase === 'fight') {
+      const e = policy();
+      if (!e) { g.gameOver(); break; }
+      await g.attack(e);
+    } else if (g.phase === 'reward') {
+      const n = choosePack(smartMode);
+      if (!n) { await tick(); continue; }
+      n.click();
+      await tick(); await tick();
+    } else if (g.phase === 'artifact') {
+      const n = chooseArtifact(smartMode);
+      if (!n) { await tick(); continue; }
+      n.click();
+      await tick(); await tick();
+    } else {
+      await tick();
+    }
+  }
+  const won = g.phase === 'ending';
+  const wave = g.wave;
+  /* si chiudono i pannelli rimasti aperti */
+  ['reward','ending','gameover','gifshow'].forEach(id => { const n = DOC.getElementById(id); if (n) n.hidden = true; });
+  return { wave: wave, won: won, artifacts: g.artifacts.length, steps: steps };
+}
+
+function stats(list){
+  const s = list.slice().sort((a,b) => a-b);
+  const n = s.length;
+  const q = p => s[Math.min(n-1, Math.floor(p*n))];
+  return {
+    n: n, min: s[0], max: s[n-1],
+    mean: (list.reduce((a,b) => a+b, 0)/n).toFixed(1),
+    p25: q(.25), median: q(.5), p75: q(.75), p90: q(.90)
+  };
+}
+function histogram(list){
+  const buckets = {};
+  list.forEach(w => { const b = Math.floor(w/10)*10; buckets[b] = (buckets[b]||0)+1; });
+  const keys = Object.keys(buckets).map(Number).sort((a,b)=>a-b);
+  const maxc = Math.max.apply(null, keys.map(k=>buckets[k]));
+  return keys.map(k => ('onda ' + String(k).padStart(3) + '-' + String(k+9).padStart(3) + ' | ' +
+    '#'.repeat(Math.round(buckets[k]/maxc*44)) + ' ' + buckets[k]).trimEnd()).join('\n');
+}
+
+async function campaign(label, policy, smartMode, bal){
+  Object.assign(D.BAL, bal);
+  const waves = [], wins = [], arts = [];
+  for (let i = 0; i < RUNS; i++) {
+    const r = await playOne(policy, smartMode);
+    waves.push(r.wave); wins.push(r.won ? 1 : 0); arts.push(r.artifacts);
+    if (i % 10 === 0) P.textContent = 'RUNNING ' + label + ' ' + i + '/' + RUNS;
+  }
+  const st = stats(waves);
+  title(label + '   (' + RUNS + ' partite)');
+  say('onda finale   min ' + st.min + '  p25 ' + st.p25 + '  mediana ' + st.median +
+      '  p75 ' + st.p75 + '  p90 ' + st.p90 + '  max ' + st.max + '  media ' + st.mean);
+  say('campagna completata: ' + Math.round(wins.reduce((a,b)=>a+b,0)/RUNS*100) + '%' +
+      '   artefatti medi ' + (arts.reduce((a,b)=>a+b,0)/RUNS).toFixed(1));
+  say(histogram(waves));
+  say('sopravvive oltre il boss  ' + [11,21,31,41,51,61,71,81,91]
+      .map(b => b + ':' + Math.round(waves.filter(w=>w>b).length/RUNS*100) + '%').join('  '));
+  return { waves: waves, wins: wins };
+}
+
+const BASE = { start:{fire:5,water:5,nature:5,light:0,darkness:0}, packDiv:10,
+               rewardCap:99, bossPack:false, bossShields:false };
+
+async function main(){
+  await boot();
+  const only = q.get('variant');
+  const D2 = {bossShields:true, bossPack:true};
+  const list = [
+    ['D · boss che paga (nessun tetto)',   smart, true, D2],
+    ['F · D + tetto ricompense 6',         smart, true, Object.assign({rewardCap:6}, D2)],
+    ['G · D + tetto ricompense 5',         smart, true, Object.assign({rewardCap:5}, D2)],
+    ['H · D + tetto ricompense 4',         smart, true, Object.assign({rewardCap:4}, D2)],
+    ['I · D + tetto ricompense 3',         smart, true, Object.assign({rewardCap:3}, D2)],
+    ['Z · gioco distratto, tetto 5',       greedy, false, Object.assign({rewardCap:5}, D2)]
+  ];
+  for (const v of list) {
+    if (only && v[0].indexOf(only + ' ') !== 0) continue;
+    Object.assign(D.BAL, JSON.parse(JSON.stringify(BASE)));
+    await campaign(v[0], v[1], v[2], v[3]);
+  }
+  P.textContent = 'DONE';
+  document.title = 'DONE';
+}
+
+main().catch(e => { P.textContent = 'CRASH ' + (e && e.stack || e); });
+</script></body></html>

@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>shot</title>
+<style>html,body{margin:0;padding:0;background:#07080e;overflow:hidden}
+iframe{border:0;display:block;position:absolute;left:0;top:0}</style></head>
+<body><script>
+const q = new URLSearchParams(location.search);
+const w = +(q.get('w') || 384), h = +(q.get('h') || 800);
+const f = document.createElement('iframe');
+f.width = w; f.height = h; f.style.width = w + 'px'; f.style.height = h + 'px';
+f.src = 'element.html?' + (q.get('q') || 'auto&debug');
+document.body.appendChild(f);
+
+const drive = q.get('drive');
+f.onload = () => setTimeout(async () => {
+  const g = f.contentWindow.__el;
+  if (!g || !drive) return;
+  const D = f.contentWindow.ElementData;
+  const [cmd, arg] = drive.split(':');
+
+  if (cmd === 'boss') {
+    g.wave = +(q.get('wave') || 11);
+    g.nextElement = arg2El(q.get('el'));
+    g.createEnemy();
+    if (q.get('force')) { g.challenge = Object.assign({}, D.CHALLENGES.find(c => c.type === q.get('force')), {reflected:0}); g.applyChallengeEntry(); g.renderQuest(); g.renderAttacks(); }
+  }
+  if (cmd === 'reward')   { g.enemy.hp = 0; await g.victory(); }
+  if (cmd === 'artifact') { g.wave = 11; g.nextElement = arg2El(q.get('el')); g.createEnemy(); g.enemy.hp = 0; await g.victory(); }
+  if (cmd === 'shelf')    { ['w1f','s1w','w2dl','s2fl','b1'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.renderShelf(); }
+  if (cmd === 'ending')   { g.wave = 91; ['w1f','s1w','w2dl'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.showEnding(); }
+  if (cmd === 'gameover') { Object.keys(g.attacks).forEach(k => g.attacks[k] = 0); g.renderAttacks(); g.gameOver(); }
+  if (cmd === 'late')     { g.wave = +(q.get('wave') || 91); g.nextElement = arg2El(q.get('el')); g.createEnemy(); }
+  function arg2El(v) { return v || 'fire'; }
+}, 600);
+</script></body></html>

@@ -1,0 +1,383 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Element Battle — banco di prova</title>
+<style>
+ body{font:13px/1.5 Consolas,monospace;background:#0b0d14;color:#dfe4ef;margin:0;padding:14px}
+ iframe{position:fixed;left:-9999px;width:384px;height:800px;border:0}
+ .ok{color:#6fe07a}.ko{color:#ff6b6b}.hd{color:#8fb7ff;margin-top:12px;font-weight:bold}
+ #sum{font-size:15px;font-weight:bold;margin:10px 0;padding:8px;border:1px solid #333;border-radius:6px}
+</style></head><body>
+<div id="sum">RUNNING</div>
+<div id="log"></div>
+<script>
+const log = document.getElementById('log');
+let pass = 0, fail = 0;
+function head(t){ const d=document.createElement('div'); d.className='hd'; d.textContent='== '+t; log.appendChild(d); }
+function check(name, cond, detail){
+  const d=document.createElement('div');
+  d.className = cond ? 'ok' : 'ko';
+  d.textContent = (cond?'PASS  ':'FAIL  ') + name + (detail!=null? '   ['+detail+']' : '');
+  log.appendChild(d);
+  cond ? pass++ : fail++;
+}
+
+function frame(query){
+  return new Promise(res=>{
+    const f=document.createElement('iframe');
+    f.src='element.html?'+query;
+    f.onload=()=>setTimeout(()=>res(f), 80);
+    document.body.appendChild(f);
+  });
+}
+const nextTick = () => new Promise(r=>setTimeout(r,0));
+
+let DOC = null;
+
+/* situazione pulita: nessun pannello aperto, fase di combattimento */
+function setup(g, opt){
+  ['reward','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  g.busy = false;
+  g.phase = 'fight';
+  g.endless = false;
+  g.artifacts = opt.artifacts || [];
+  g.wave = opt.wave;
+  g.nextElement = opt.el;
+  g.createEnemy();
+  /* createEnemy puo' aver estratto una sfida a caso e speso attacchi:
+     si azzera tutto, cosi' ogni prova parte dalle stesse condizioni */
+  g.challenge = null;
+  if (opt.attacks) g.attacks = Object.assign({fire:0,water:0,nature:0,light:0,darkness:0}, opt.attacks);
+  g.busy = false;
+  g.phase = 'fight';
+  g.renderAll();
+}
+
+/* come setup, ma lascia in piedi la sfida estratta dal gioco */
+function setupRaw(g, opt){
+  ['reward','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  g.busy=false; g.phase='fight'; g.endless=false;
+  g.artifacts = opt.artifacts || [];
+  if (opt.attacks) g.attacks = Object.assign({fire:0,water:0,nature:0,light:0,darkness:0}, opt.attacks);
+  g.wave = opt.wave; g.nextElement = opt.el;
+  g.createEnemy();
+  g.busy=false; g.phase='fight';
+}
+
+/* colpisce finche' il nemico non cade, con tetto di sicurezza */
+async function killWith(g, element, cap){
+  let n = 0;
+  while (g.enemy.hp > 0){
+    if (++n > (cap||400)) throw new Error('bloccato su '+element+' (fase '+g.phase+', hp '+g.enemy.hp+', n '+g.attacks[element]+')');
+    await g.attack(element);
+  }
+  await nextTick();
+}
+
+/* costruisce uno zip in memoria (metodo 0 = stored, 8 = deflate) */
+async function makeZip(entries, method){
+  const enc=new TextEncoder();
+  const crcTable=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+  const crc32=u8=>{let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=crcTable[(c^u8[i])&0xff]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
+  const parts=[], central=[]; let offset=0;
+  for(const e of entries){
+    const nameB=enc.encode(e.name);
+    let data=e.data;
+    if(method===8){
+      const st=new Blob([e.data]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      data=new Uint8Array(await new Response(st).arrayBuffer());
+    }
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true);
+    lh.setUint16(8,method,true); lh.setUint32(14,crc32(e.data),true);
+    lh.setUint32(18,data.length,true); lh.setUint32(22,e.data.length,true);
+    lh.setUint16(26,nameB.length,true); lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer), nameB, data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true);
+    ch.setUint16(10,method,true); ch.setUint32(16,crc32(e.data),true);
+    ch.setUint32(20,data.length,true); ch.setUint32(24,e.data.length,true);
+    ch.setUint16(28,nameB.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30+nameB.length+data.length;
+  }
+  const cdStart=offset;
+  let cdLen=0; central.forEach(p=>cdLen+=p.length);
+  const eo=new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true);
+  eo.setUint16(8,entries.length,true); eo.setUint16(10,entries.length,true);
+  eo.setUint32(12,cdLen,true); eo.setUint32(16,cdStart,true);
+  return new Blob(parts.concat(central, [new Uint8Array(eo.buffer)]),{type:'application/zip'});
+}
+
+const GIF1PX = new Uint8Array([0x47,0x49,0x46,0x38,0x39,0x61,1,0,1,0,0x80,0,0,0,0,0,0xff,0xff,0xff,
+  0x21,0xf9,4,1,0,0,0,0x2c,0,0,0,0,1,0,1,0,0,2,2,0x44,1,0,0x3b]);
+
+async function run(){
+  const f = await frame('auto&debug&fast');
+  DOC = f.contentDocument;
+  const W = f.contentWindow, D = W.ElementData, g = W.__el;
+
+  /* ------------------------------------------------------- tabelle */
+  head('Tabella dei danni (identica al gioco originale)');
+  check('fuoco vs natura = 8', D.baseDamage('fire','nature',false,false)===8);
+  check('natura vs fuoco = 2', D.baseDamage('nature','fire',false,false)===2);
+  check('acqua vs fuoco = 8', D.baseDamage('water','fire',false,false)===8);
+  check('fuoco vs luce = 4', D.baseDamage('fire','light',false,false)===4);
+  check('luce vs buio = 8', D.baseDamage('light','darkness',false,false)===8);
+  check('luce base = 3', D.baseDamage('light','fire',false,false)===3);
+  check('buio base = 7', D.baseDamage('darkness','fire',false,false)===7);
+  check('buio vs luce = 10', D.baseDamage('darkness','light',false,false)===10);
+  check('buio incatenato = 14', D.baseDamage('darkness','fire',true,false)===14);
+
+  head('Illustrazioni: dieci livelli, tutti raggiungibili');
+  const tiers = new Set();
+  for(let hp=10; hp<=140; hp++) tiers.add(D.artTier(hp));
+  check('livelli usati 1..10', Array.from(tiers).sort((a,b)=>a-b).join(',')==='1,2,3,4,5,6,7,8,9,10', Array.from(tiers).join(','));
+  check('PV 30 -> livello 3 (il vecchio saltava il 3)', D.artTier(30)===3);
+  check('PV 100 -> livello 10', D.artTier(100)===10);
+  const missing=[];
+  await Promise.all(D.ELEMENTS.map(e=>Promise.all(Array.from({length:10},(_,i)=>
+     fetch('img/mon/'+e+(i+1)+'.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) missing.push(e+(i+1)); })))));
+  check('le 50 illustrazioni dei mostri esistono', missing.length===0, missing.join(' '));
+
+  /* ---------------------------------------------------------- boss */
+  head('Boss: quando compare');
+  check('boss a PV 20 / 30 / 100', D.isBossHp(20)&&D.isBossHp(30)&&D.isBossHp(100));
+  check('non boss a PV 10 / 25 / 99', !D.isBossHp(10)&&!D.isBossHp(25)&&!D.isBossHp(99));
+  setupRaw(g,{wave:11, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  check('onda 11 -> boss da 20 PV', g.enemy.boss===true && g.enemy.maxHp===20);
+  check('sul boss non c-e quest', g.quest===null);
+  check('sul boss c-e una sfida', !!g.challenge, g.challenge && g.challenge.type);
+  const seen = {};
+  for (let i=0;i<400;i++){ setupRaw(g,{wave:11, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+                           if(g.challenge) seen[g.challenge.type]=1; }
+  check('escono tutte e quattro le sfide', Object.keys(seen).length===4, Object.keys(seen).join(','));
+
+  head('Boss 1/4 — Elemental Armor: annulla la super efficacia');
+  setup(g,{wave:11, el:'nature', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
+  check('fuoco vs natura: 8 -> 4', g.damageOf('fire')===4, g.damageOf('fire'));
+  check('natura vs natura resta 4', g.damageOf('nature')===4, g.damageOf('nature'));
+  setup(g,{wave:11, el:'darkness'});
+  g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
+  check('luce vs buio: 8 -> 3', g.damageOf('light')===3, g.damageOf('light'));
+  setup(g,{wave:11, el:'light'});
+  g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
+  check('buio vs luce: 10 -> 7', g.damageOf('darkness')===7, g.damageOf('darkness'));
+  g.renderAttacks();
+  check('il pulsante non e piu marcato super', !DOC.querySelector('.atk.darkness').classList.contains('super'));
+
+  head('Boss 2/4 — Devouring Aura: perdi meta degli attacchi dell-elemento');
+  setup(g,{wave:11, el:'water', attacks:{fire:4,water:9,nature:4,light:1,darkness:1}});
+  g.challenge={type:'halfElementAttacks',title:'x',desc:'x',reflected:0}; g.applyChallengeEntry();
+  check('9 acqua -> 5', g.attacks.water===5, g.attacks.water);
+  check('gli altri elementi restano intatti', g.attacks.fire===4 && g.attacks.nature===4);
+
+  head('Boss 3/4 — Conversion Aura: converte nell-elemento resistito');
+  check('boss fuoco resiste a natura',  g.resistedBy('fire')==='nature',  g.resistedBy('fire'));
+  check('boss acqua resiste a fuoco',   g.resistedBy('water')==='fire',   g.resistedBy('water'));
+  check('boss natura resiste ad acqua', g.resistedBy('nature')==='water', g.resistedBy('nature'));
+  check('boss luce resiste a luce',     g.resistedBy('light')==='light',  g.resistedBy('light'));
+  check('boss buio: scelto il danno minimo', D.baseDamage(g.resistedBy('darkness'),'darkness',false,false)===4, g.resistedBy('darkness'));
+  setup(g,{wave:11, el:'fire', attacks:{fire:8,water:2}});
+  g.challenge={type:'conversionAura',title:'x',desc:'x',reflected:0}; g.applyChallengeEntry();
+  check('3 fuoco diventano 3 natura', g.attacks.fire===5 && g.attacks.nature===3, g.attacks.fire+'/'+g.attacks.nature);
+  check('il totale non cambia', g.totalAttacks()===10, g.totalAttacks());
+
+  head('Boss 4/4 — Reflective Aura: ogni 8 danni perdi un attacco');
+  setup(g,{wave:11, el:'nature', attacks:{fire:6,water:6,nature:6}});
+  g.challenge={type:'reflectiveAura',title:'x',desc:'x',reflected:0};
+  const before = g.totalAttacks();
+  await g.attack('fire');
+  check('8 danni -> 2 attacchi in meno', g.totalAttacks()===before-2, before+' -> '+g.totalAttacks());
+  check('il contatore si azzera', g.challenge.reflected===0, g.challenge.reflected);
+  const b2 = g.totalAttacks();
+  await g.attack('water');
+  check('4 danni -> solo l-attacco speso', g.totalAttacks()===b2-1, b2+' -> '+g.totalAttacks());
+
+  head('Boss: la ricompensa e un artefatto');
+  setup(g,{wave:11, el:'fire', attacks:{fire:30,water:6,nature:6}});
+  const bestBefore = g.best.normal;
+  await killWith(g,'fire');
+  const cards = DOC.querySelectorAll('#reward-inner .artifact-card');
+  check('quattro artefatti proposti', cards.length===4, cards.length);
+  check('nessun pacchetto normale', DOC.querySelectorAll('#reward-inner .pack').length===0);
+  check('il record si aggiorna anche sul boss', g.best.normal>=20 && g.best.normal>bestBefore, g.best.normal);
+  cards[0].click();
+  await nextTick(); await nextTick();
+  check('scelto l-artefatto si passa all-onda dopo', g.wave===12 && g.phase==='fight', g.wave+'/'+g.phase);
+  check('l-artefatto finisce nello scaffale', DOC.querySelectorAll('#shelf .shelf-item').length>=1);
+
+  head('Boss: la benedizione del saggio salta la sfida successiva');
+  g.skipChallenge = true;
+  setupRaw(g,{wave:21, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  check('boss senza sfida', g.enemy.boss===true && g.challenge===null);
+  check('la benedizione si consuma', g.skipChallenge===false);
+  setupRaw(g,{wave:31, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  check('il boss dopo ha di nuovo la sfida', !!g.challenge);
+
+  head('Boss: ricaricando la partita la sfida non si riapplica');
+  setup(g,{wave:11, el:'water', attacks:{fire:4,water:8,nature:4}});
+  g.challenge={type:'halfElementAttacks',title:'x',desc:'x',reflected:0}; g.applyChallengeEntry();
+  const afterEntry = g.attacks.water;
+  g.save();
+  g.continueGame();
+  check('gli attacchi non calano una seconda volta', g.attacks.water===afterEntry, afterEntry+' -> '+g.attacks.water);
+  check('la sfida viene ripristinata', !!g.challenge && g.challenge.type==='halfElementAttacks');
+
+  /* --------------------------------------------------------- quest */
+  head('Quest');
+  setup(g,{wave:1, el:'nature', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.quest = D.QUESTS.find(q=>q.type==='fireSpecialist'); g.questFailed=false; g.resetQuestState();
+  await g.attack('water');
+  check('specialista fuoco: con acqua fallisce', g.questFailed===true);
+
+  setup(g,{wave:1, el:'nature', attacks:{fire:9,water:9,nature:9}});
+  g.quest = D.QUESTS.find(q=>q.type==='fireSpecialist'); g.questFailed=false; g.resetQuestState();
+  const fireBefore = g.attacks.fire;
+  await g.attack('fire'); await g.attack('fire');
+  await nextTick();
+  check('specialista fuoco: 2 attacchi, 1 rimborsato', g.attacks.fire===fireBefore-2+1, fireBefore+' -> '+g.attacks.fire);
+
+  setup(g,{wave:1, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.quest = D.QUESTS.find(q=>q.type==='noSuperEffective'); g.questFailed=false; g.resetQuestState();
+  await g.attack('water');
+  check('Path of Resistance: fallisce al primo super efficace', g.questFailed===true);
+
+  setup(g,{wave:1, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.quest = D.QUESTS.find(q=>q.type==='lastHit_light'); g.questFailed=false; g.resetQuestState();
+  let guard=0;
+  while(g.enemy.hp>3 && ++guard<40) await g.attack('fire');
+  const lightBefore = g.attacks.light;
+  await g.attack('light');
+  await nextTick();
+  check('Divine Judgment: colpo finale di luce premiato', g.attacks.light>lightBefore-1, lightBefore+' -> '+g.attacks.light);
+
+  /* nemico robusto: cosi' tutti e cinque i colpi vanno a segno prima della morte */
+  setup(g,{wave:40, el:'fire', attacks:{fire:30,water:30,nature:30,light:30,darkness:30}});
+  g.quest = D.QUESTS.find(q=>q.type==='useAllTypes'); g.questFailed=false; g.resetQuestState();
+  await g.attack('light'); await g.attack('nature'); await g.attack('darkness');
+  await g.attack('water'); await g.attack('fire');
+  check('tutti e cinque i tipi risultano usati', g.qs.usedElements.length===5, g.qs.usedElements.join(','));
+  let g2=0;
+  while(g.enemy.hp>4 && ++g2<60) await g.attack('fire');
+  const totBefore = g.totalAttacks();
+  await g.attack('fire');
+  await nextTick();
+  check('Master of Elements: il nemico muore e arriva il premio',
+        g.enemy.hp<=0 && g.totalAttacks() >= totBefore + 3, totBefore+' -> '+g.totalAttacks());
+
+  /* ----------------------------------------------------- fine partita */
+  head('Fine partita');
+  setup(g,{wave:5, el:'fire', attacks:{fire:1}});
+  await g.attack('fire');
+  check('zero attacchi con nemico vivo -> game over', g.phase==='gameover', g.phase);
+  check('il pannello di fine partita e visibile', DOC.getElementById('gameover').hidden===false);
+
+  /* --------------------------------------------------------- finale */
+  head('Finale della campagna e corsa infinita');
+  g.newGame();
+  setup(g,{wave:91, el:'fire', attacks:{fire:99}});
+  check('onda 91 = ultimo boss, 100 PV, illustrazione 10', g.enemy.maxHp===100 && g.enemy.boss && g.enemy.tier===10);
+  await killWith(g,'fire');
+  DOC.querySelectorAll('#reward-inner .artifact-card')[0].click();
+  await nextTick(); await nextTick();
+  check('battuto l-ultimo boss appare il finale', g.phase==='ending' && DOC.getElementById('ending').hidden===false, g.phase);
+  DOC.getElementById('btn-endless').click();
+  await nextTick();
+  check('la corsa infinita riparte dall-onda 92', g.endless===true && g.wave===92 && g.phase==='fight', g.wave+'/'+g.phase);
+  g.wave=200; g.nextWave();
+  check('in modalita infinita il finale non torna', g.phase==='fight' && g.wave===201, g.phase+'/'+g.wave);
+
+  /* -------------------------------------------------- uovo di pasqua */
+  head('Easter egg: archivio ZIP di GIF');
+  check('lo stemma dell-elemento e il bersaglio', !!DOC.getElementById('badge'));
+  const src = await fetch('element.js').then(r=>r.text());
+  check('la pressione lunga dura 3 secondi', /}, 3000\);/.test(src));
+  check('l-uovo e legato allo stemma con touch e mouse',
+        /touchstart', start/.test(src) && /mousedown', start/.test(src));
+  check('la lettura dello zip non dipende da librerie esterne',
+        !/jszip/i.test(src) && /DecompressionStream/.test(src));
+
+  g.newGame();
+  const zipStored = await makeZip([{name:'a.gif',data:GIF1PX},{name:'b.gif',data:GIF1PX},
+                                   {name:'note.txt',data:new TextEncoder().encode('x')}], 0);
+  await g.loadZip(new File([zipStored],'t.zip'));
+  check('zip non compresso: 2 GIF caricate, il .txt ignorato', g.gifs.length===2, g.gifs.length);
+  check('la modalita GIF si attiva', g.gifMode===true);
+  check('il nemico ha una GIF', !!g.enemy.gif);
+  check('compare il pulsante per tornare alle illustrazioni', DOC.getElementById('btn-change').hidden===false);
+
+  g.newGame();
+  const zipDeflate = await makeZip([{name:'x/one.gif',data:GIF1PX},{name:'x/two.gif',data:GIF1PX},
+                                    {name:'x/three.gif',data:GIF1PX}], 8);
+  await g.loadZip(new File([zipDeflate],'t2.zip'));
+  check('zip compresso deflate: 3 GIF caricate', g.gifs.length===3, g.gifs.length);
+
+  const bestGifBefore = g.best.gif, bestNormalBefore = g.best.normal;
+  setup(g,{wave:15, el:'fire', attacks:{fire:99}});
+  await killWith(g,'fire');
+  check('in modalita GIF il record va nel contatore GIF',
+        g.best.gif>bestGifBefore && g.best.normal===bestNormalBefore, g.best.normal+' / '+g.best.gif);
+  DOC.querySelector('#reward-inner .pack').click();
+  await nextTick(); await nextTick();
+  check('nuovo nemico, nuova GIF', !!g.enemy.gif);
+
+  g.switchToNormal();
+  check('il pulsante Art riporta alle illustrazioni', g.gifMode===false && !g.enemy.gif);
+  check('e il pulsante sparisce', DOC.getElementById('btn-change').hidden===true);
+
+  const emptyZip = await makeZip([{name:'readme.txt',data:new TextEncoder().encode('nope')}], 0);
+  const gifsBefore = g.gifs.length;
+  await g.loadZip(new File([emptyZip],'e.zip'));
+  check('zip senza GIF: niente si rompe', g.gifs.length===gifsBefore && g.gifMode===false);
+
+  /* ------------------------------------------------------ artefatti */
+  head('Artefatti');
+  check('32 artefatti in tutto', D.ARTIFACTS.length===32, D.ARTIFACTS.length);
+  const withArt = D.ARTIFACTS.filter(a=>a.img).length;
+  check('20 con illustrazione, 12 senza', withArt===20 && D.ARTIFACTS.length-withArt===12, withArt);
+  const artMissing=[];
+  await Promise.all(D.ARTIFACTS.filter(a=>a.img).map(a=>
+    fetch('img/art/'+a.img+'.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) artMissing.push(a.img); })));
+  check('le illustrazioni dichiarate esistono', artMissing.length===0, artMissing.join(' '));
+
+  g.newGame();
+  setup(g,{wave:1, el:'light', attacks:{fire:9}, artifacts:[D.ARTIFACT_BY_ID['w1f'], D.ARTIFACT_BY_ID['w1f']]});
+  check('la stessa arma due volte: +4 danno', g.damageOf('fire')===D.baseDamage('fire','light',false,false)+4, g.damageOf('fire'));
+
+  setup(g,{wave:1, el:'fire', attacks:{fire:1,water:1,nature:1,light:1,darkness:1},
+           artifacts:[D.ARTIFACT_BY_ID['s1w'], D.ARTIFACT_BY_ID['s2fl']]});
+  g.applyShields();
+  check('scudi: +2 acqua, +1 fuoco, +1 luce',
+        g.attacks.water===3 && g.attacks.fire===2 && g.attacks.light===2, JSON.stringify(g.attacks));
+
+  setup(g,{wave:11, el:'fire', attacks:{fire:40}, artifacts:[D.ARTIFACT_BY_ID['s1f']]});
+  const beforeBossWin = g.attacks.fire;
+  await killWith(g,'fire');
+  check('gli scudi rigenerano anche battendo un boss (+2 fuoco)',
+        g.attacks.fire === beforeBossWin - 5 + 2, beforeBossWin+' -> '+g.attacks.fire);
+  const beforeSpoils = g.totalAttacks();
+  DOC.querySelectorAll('#reward-inner .artifact-card')[0].click();
+  await nextTick(); await nextTick();
+  check('il boss paga anche il bottino in attacchi', g.totalAttacks() > beforeSpoils,
+        beforeSpoils+' -> '+g.totalAttacks());
+
+  /* ----------------------------------------------------- salvataggio */
+  head('Salvataggio');
+  g.newGame();
+  setup(g,{wave:7, el:'nature', attacks:{fire:5,water:5,nature:5},
+           artifacts:[D.ARTIFACT_BY_ID['w1f'], D.ARTIFACT_BY_ID['s1w']]});
+  g.save();
+  g.continueGame();
+  check('gli artefatti sopravvivono', g.artifacts.length===2 && g.artifacts[0].id==='w1f', g.artifacts.map(a=>a.id).join(','));
+  check('onda e nemico ripristinati', g.wave===7 && g.enemy.maxHp===16, g.wave+'/'+g.enemy.maxHp);
+
+  document.getElementById('sum').textContent =
+    'RESULT ' + (fail===0 ? 'ALL PASS' : 'FAILURES') + ' pass=' + pass + ' fail=' + fail;
+}
+
+run().catch(e=>{
+  check('il banco arriva in fondo', false, e && (e.message||e));
+  document.getElementById('sum').textContent = 'RESULT CRASH pass='+pass+' fail='+fail+' :: '+(e&&e.stack||e);
+});
+</script></body></html>
