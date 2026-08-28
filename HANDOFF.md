@@ -53,10 +53,13 @@ python costruisci-clear.py                   # rigenera i tre element-clear.*
 Collaudo, con Chrome headless (`--dump-dom` e si leggono i PASS/FAIL):
 
 ```
-http://localhost:8158/_test.html                  81 verifiche, versione completa
-http://localhost:8158/_test.html?target=clear     86 verifiche, versione clear
+http://localhost:8158/_test.html                 101 verifiche, versione completa
+http://localhost:8158/_test.html?target=clear    106 verifiche, versione clear
+http://localhost:8158/_bot.html?runs=100&variant=W   solo spade (S: solo scudi, M: misto)
 http://localhost:8158/_bot.html?runs=100          bot che gioca e misura il bilanciamento
 http://localhost:8158/_shot.html?w=384&h=800&...  screenshot a misura di telefono
+   ...&drive=report|mystery                       le due schermate nuove
+   ...&freeze=1400                                congela le animazioni a un istante
 ```
 
 **Vanno tenute verdi tutte e due.** Se tocchi `element.js`, rilancia
@@ -77,8 +80,28 @@ riferimenti a css e js dentro l'html (adesso `v=4`).
 - finale della campagna + corsa infinita
 - schermata delle ricompense con il prossimo nemico in grande, la sua onda/PV,
   la fascia BOSS e la tabella di quanto fa ogni attacco contro di lui
-- aura pesante sui boss, scaffale degli artefatti, effetti a particelle,
+- aura pesante sui boss + **i colori del mostro che pulsano** (`bossColors`,
+  ripresa dal `bossBorderPulse` del gioco del 2025: brightness 1 -> 1,4 e
+  alone bianco sul bordo, ma sul tempo dell'aura, 2,8s), scaffale degli
+  artefatti, effetti a particelle,
   suoni sintetizzati (nessun file audio)
+- **precarico delle figure** (`Preload` in `element.js`): le velature e i mostri
+  scendono in sottofondo appena si apre la pagina, due per volta e a bassa
+  priorita'; la figura del prossimo nemico — che si conosce un'onda prima —
+  scavalca la coda. Se una figura non e' ancora intera il ritratto resta spento
+  (`#portrait-art.waiting`) invece di mostrarla arrivare a fasce. Il sottofondo
+  non parte con `?fast` (il bot farebbe 87 richieste per partita) ne' quando il
+  telefono chiede di risparmiare dati.
+- **resoconto dell'onda** (`showReport`): prima della schermata del bottino si
+  legge fermo com'e' finita la quest (bollo `complete`/`failed`), che premio ha
+  pagato, e quanti attacchi ha restituito ogni scudo, uno per uno. Sul boss al
+  posto della quest c'e' la sfida, e il pulsante manda agli artefatti. Se non
+  c'e' niente da raccontare (nessuna quest, nessuno scudo, nessuna sfida) la
+  schermata si salta: nessun tocco a vuoto.
+- **il punto interrogativo si spiega** (`revealMystery`): scelto il pacchetto
+  misterioso, un pannello dice cosa era rispetto ai pacchetti che si vedevano
+  (`Empty hands` / `Thin` / `Fair` / `Rich` / `Double pack`) ed elenca gli
+  attacchi presi. Prima era un bollino da 750 ms sulla carta.
 - **easter egg**: pressione lunga 3 secondi sullo stemma dell'elemento → zip di
   GIF → i mostri diventano quelle, premio a pieno schermo lungo quanto i PV.
   Solo nella versione completa.
@@ -92,6 +115,13 @@ gioco completo è pubblico e il suo README descrive l'easter egg. Togliere il
 solo meccanismo non basta — restavano `gifMode`, `#gif-slot` e un'intestazione
 che lo annunciava. `costruisci-clear.py` si rifiuta di scrivere se trova una
 parola proibita. **`JSON.stringify` contiene "gif"** e fa scattare falsi allarmi.
+
+**I pannelli che aspettano un tocco.** Il resoconto dell'onda e il pacchetto
+misterioso si fermano finche' non si tocca il pulsante. Con `?fast` no: il
+pannello viene **costruito ma non mostrato**, e il gioco tira dritto. Senza
+questa scorciatoia il bot resterebbe piantato per sempre, e ogni verifica che
+uccide un nemico andrebbe riscritta. Le verifiche leggono `#report-body` e
+`#mystery-*` proprio cosi', a pannello costruito.
 
 **Screenshot headless.** `--window-size` non viene rispettato: la pagina si
 impagina a 526×700 e lo scatto ritaglia. Per questo c'è `_shot.html`, che mette
@@ -113,6 +143,22 @@ centro di 26 px. Centro vero (508, 497), raggio 457 su 1024.
 ---
 
 ## Aperto, in ordine di quanto conta
+
+**0. Spade e scudi, sistemato il 28 ago 2026.** Il bot che raccoglie *una sola
+famiglia* di artefatti diceva: solo scudi **34%** di campagne chiuse, solo spade
+**4%**. Le spade erano una carta morta. La causa non era il danno — a +4 e a +6
+la campagna resta al 4-5%, misurato due volte — ma la valuta: la partita finisce
+quando finiscono gli **attacchi**, e le spade non ne danno. Ora ogni spada
+arriva con una **dotazione** di 6 attacchi del suo tipo (3+3 per le doppie) e
+il bonus di danno e' salito a +3 (+2 per le doppie): `BAL.weapon1`,
+`BAL.weapon2`, `BAL.weaponGrant`. Rimisurato: **34% contro 34%**, con curve
+diverse (le spade alzano la mediana a 21, gli scudi vincono di rendita) e il
+gioco misto passa dal 33% al 37%.
+
+**Trappola del banco:** `_bot.html` ripartiva da una copia di `BAL` scritta a
+mano, e dopo il cambio misurava un gioco che non esisteva piu' (spade al 3%
+invece che al 34%). Adesso `BASE` si prende a caldo da `D.BAL` dopo il boot.
+Le varianti `M`/`S`/`W` del bot servono proprio a questo confronto.
 
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21

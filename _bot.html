@@ -153,14 +153,28 @@ function choosePack(smartMode){
   return (mystery && mysteryEV > bestVal) ? mystery : bestNode;
 }
 
+/* Pesi tarati sulle misure dell-28 ago 2026: a parita' di partita, raccogliendo
+   solo scudi la campagna si chiude nel 34% dei casi, solo spade nel 25% con la
+   taratura scelta. Il bot deve quindi preferire ancora lo scudo, ma di poco:
+   con i pesi vecchi (spada 28 contro scudo 100) non ne avrebbe presa una. */
 function artifactValue(a){
   if (a.slot === 'shield')   return 60 + Object.keys(a.regen).reduce((s,e) => s + a.regen[e], 0) * 20;
-  if (a.slot === 'weapon')   return 20 + Object.keys(a.bonus).reduce((s,e) => s + a.bonus[e], 0) * 4;
+  if (a.slot === 'weapon')   return 30 + Object.keys(a.bonus).reduce((s,e) => s + a.bonus[e], 0) * 6
+                                    + (D.BAL.weaponGrant || 0) * 5;
   if (a.grant)               return 34;
   return 8;
 }
-function chooseArtifact(smartMode){
-  const cards = Array.from(DOC.querySelectorAll('#reward-inner .artifact-card'));
+function chooseArtifact(smartMode, soloSlot){
+  let cards = Array.from(DOC.querySelectorAll('#reward-inner .artifact-card'));
+  /* per misurare quanto vale una famiglia sola: si scarta tutto il resto,
+     e se in quella mano non c'e' niente di quella famiglia si prende com-e' */
+  if (soloSlot) {
+    const soli = cards.filter(c => {
+      const a = D.ARTIFACTS.find(x => x.name === c.querySelector('.artifact-name').textContent);
+      return a && a.slot === soloSlot;
+    });
+    if (soli.length) cards = soli;
+  }
   if (!smartMode) return cards[0];
   let bn = cards[0], bv = -1;
   cards.forEach(c => {
@@ -174,7 +188,7 @@ function chooseArtifact(smartMode){
 
 /* ------------------------------------------------------------- partita */
 
-async function playOne(policy, smartMode){
+async function playOne(policy, smartMode, soloSlot){
   g.newGame();
   let steps = 0;
   while (steps++ < CAP) {
@@ -191,7 +205,7 @@ async function playOne(policy, smartMode){
       n.click();
       await tick(); await tick();
     } else if (g.phase === 'artifact') {
-      const n = chooseArtifact(smartMode);
+      const n = chooseArtifact(smartMode, soloSlot);
       if (!n) { await tick(); continue; }
       n.click();
       await tick(); await tick();
@@ -202,7 +216,7 @@ async function playOne(policy, smartMode){
   const won = g.phase === 'ending';
   const wave = g.wave;
   /* si chiudono i pannelli rimasti aperti */
-  ['reward','ending','gameover','gifshow'].forEach(id => { const n = DOC.getElementById(id); if (n) n.hidden = true; });
+  ['reward','report','mystery','ending','gameover','gifshow'].forEach(id => { const n = DOC.getElementById(id); if (n) n.hidden = true; });
   return { wave: wave, won: won, artifacts: g.artifacts.length, steps: steps };
 }
 
@@ -225,11 +239,12 @@ function histogram(list){
     '#'.repeat(Math.round(buckets[k]/maxc*44)) + ' ' + buckets[k]).trimEnd()).join('\n');
 }
 
-async function campaign(label, policy, smartMode, bal){
+async function campaign(label, policy, smartMode, bal, soloSlot){
   Object.assign(D.BAL, bal);
+  if (D.applyBal) D.applyBal();
   const waves = [], wins = [], arts = [];
   for (let i = 0; i < RUNS; i++) {
-    const r = await playOne(policy, smartMode);
+    const r = await playOne(policy, smartMode, soloSlot);
     waves.push(r.wave); wins.push(r.won ? 1 : 0); arts.push(r.artifacts);
     if (i % 10 === 0) P.textContent = 'RUNNING ' + label + ' ' + i + '/' + RUNS;
   }
@@ -245,14 +260,37 @@ async function campaign(label, policy, smartMode, bal){
   return { waves: waves, wins: wins };
 }
 
-const BASE = { start:{fire:5,water:5,nature:5,light:0,darkness:0}, packDiv:10,
-               rewardCap:99, bossPack:false, bossShields:false };
+/* I valori di partenza si prendono a caldo da BAL, non si ricopiano qui: una
+   copia scritta a mano invecchia al primo cambio di bilanciamento, e il banco
+   si mette a misurare un gioco che non esiste piu' (successo il 28 ago 2026 con
+   le manopole delle armi). Restano fissati a mano solo i due interruttori che
+   le varianti accendono apposta. */
+let BASE = null;
 
 async function main(){
   await boot();
+  BASE = Object.assign(JSON.parse(JSON.stringify(D.BAL)), {bossPack:false, bossShields:false});
   const only = q.get('variant');
   const D2 = {bossShields:true, bossPack:true};
   const list = [
+    /* quanto vale una famiglia sola di artefatti: stesso gioco, stessa politica,
+       ma il bot raccoglie soltanto spade oppure soltanto scudi */
+    ['M · misto, come adesso',             smart, true, D2],
+    ['S · solo scudi',                     smart, true, D2, 'shield'],
+    ['W · solo spade',                     smart, true, D2, 'weapon'],
+    /* proposte per rimettere in gioco le spade, misurate a spade sole */
+    ['W2 · solo spade, danno +4/+2',       smart, true, Object.assign({weapon1:4, weapon2:2}, D2), 'weapon'],
+    ['W3 · solo spade, danno +6/+3',       smart, true, Object.assign({weapon1:6, weapon2:3}, D2), 'weapon'],
+    ['W4 · solo spade, +2 e dotazione 6',  smart, true, Object.assign({weaponGrant:6}, D2), 'weapon'],
+    ['W5 · solo spade, +4 e dotazione 6',  smart, true, Object.assign({weapon1:4, weapon2:2, weaponGrant:6}, D2), 'weapon'],
+    ['W6 · solo spade, +4 e dotazione 12', smart, true, Object.assign({weapon1:4, weapon2:2, weaponGrant:12}, D2), 'weapon'],
+    ['W7 · solo spade, +3 e dotazione 6',  smart, true, Object.assign({weapon1:3, weapon2:2, weaponGrant:6}, D2), 'weapon'],
+    ['W8 · solo spade, +2 e dotazione 9',  smart, true, Object.assign({weaponGrant:9}, D2), 'weapon'],
+    /* la stessa domanda posta a un giocatore distratto, che non vive di luce */
+    ['GS · distratto, solo scudi',         greedy, false, D2, 'shield'],
+    ['GW · distratto, solo spade',         greedy, false, D2, 'weapon'],
+    ['GW2 · distratto, spade +4',          greedy, false, Object.assign({weapon1:4, weapon2:2}, D2), 'weapon'],
+    ['GW7 · distratto, +3 e dotazione 6',  greedy, false, Object.assign({weapon1:3, weapon2:2, weaponGrant:6}, D2), 'weapon'],
     ['D · boss che paga (nessun tetto)',   smart, true, D2],
     ['F · D + tetto ricompense 6',         smart, true, Object.assign({rewardCap:6}, D2)],
     ['G · D + tetto ricompense 5',         smart, true, Object.assign({rewardCap:5}, D2)],
@@ -263,7 +301,7 @@ async function main(){
   for (const v of list) {
     if (only && v[0].indexOf(only + ' ') !== 0) continue;
     Object.assign(D.BAL, JSON.parse(JSON.stringify(BASE)));
-    await campaign(v[0], v[1], v[2], v[3]);
+    await campaign(v[0], v[1], v[2], v[3], v[4]);
   }
   P.textContent = 'DONE';
   document.title = 'DONE';

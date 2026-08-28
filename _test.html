@@ -34,7 +34,7 @@ let DOC = null;
 
 /* situazione pulita: nessun pannello aperto, fase di combattimento */
 function setup(g, opt){
-  ['reward','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  ['reward','report','mystery','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
   g.busy = false;
   g.phase = 'fight';
   g.endless = false;
@@ -53,7 +53,7 @@ function setup(g, opt){
 
 /* come setup, ma lascia in piedi la sfida estratta dal gioco */
 function setupRaw(g, opt){
-  ['reward','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
+  ['reward','report','mystery','gifshow','ending','gameover'].forEach(id=>{ const n=DOC.getElementById(id); if(n) n.hidden=true; });
   g.busy=false; g.phase='fight'; g.endless=false;
   g.artifacts = opt.artifacts || [];
   if (opt.attacks) g.attacks = Object.assign({fire:0,water:0,nature:0,light:0,darkness:0}, opt.attacks);
@@ -381,7 +381,47 @@ async function run(){
 
   g.newGame();
   setup(g,{wave:1, el:'light', attacks:{fire:9}, artifacts:[D.ARTIFACT_BY_ID['w1f'], D.ARTIFACT_BY_ID['w1f']]});
-  check('la stessa arma due volte: +4 danno', g.damageOf('fire')===D.baseDamage('fire','light',false,false)+4, g.damageOf('fire'));
+  check('la stessa arma due volte: doppio bonus',
+        g.damageOf('fire')===D.baseDamage('fire','light',false,false)+2*D.BAL.weapon1,
+        g.damageOf('fire')+' (weapon1='+D.BAL.weapon1+')');
+
+  /* --------------------------------------------- spade: danno e dotazione */
+  head('Spade: bonus e dotazione');
+  check('le manopole sono quelle scelte il 28 ago',
+        D.BAL.weapon1===3 && D.BAL.weapon2===2 && D.BAL.weaponGrant===6,
+        D.BAL.weapon1+'/'+D.BAL.weapon2+'/'+D.BAL.weaponGrant);
+  check('il bonus dell-arma singola viene da BAL.weapon1',
+        D.ARTIFACT_BY_ID['w1f'].bonus.fire===D.BAL.weapon1, D.ARTIFACT_BY_ID['w1f'].bonus.fire);
+  const doppia = D.ARTIFACT_BY_ID['w2fl'];
+  check('e quello della doppia da BAL.weapon2, su tutti e due gli elementi',
+        doppia.bonus.fire===D.BAL.weapon2 && doppia.bonus.light===D.BAL.weapon2,
+        JSON.stringify(doppia.bonus));
+  check('la descrizione dice anche la dotazione',
+        /\+6 fire attacks right now/.test(D.ARTIFACT_BY_ID['w1f'].desc), D.ARTIFACT_BY_ID['w1f'].desc);
+  check('la doppia ne promette meta- per elemento',
+        /\+3 of each right now/.test(doppia.desc), doppia.desc);
+
+  /* raccogliendo una spada arrivano davvero gli attacchi promessi */
+  setup(g,{wave:11, el:'nature', attacks:{fire:40}});
+  await killWith(g,'fire');
+  const cardeSpade = Array.prototype.filter.call(
+        DOC.querySelectorAll('#reward-inner .artifact-card'),
+        c => { const a = D.ARTIFACTS.find(x => x.name === c.querySelector('.artifact-name').textContent);
+               return a && a.slot === 'weapon'; });
+  if (cardeSpade.length) {
+    const arma = D.ARTIFACTS.find(x => x.name === cardeSpade[0].querySelector('.artifact-name').textContent);
+    const prima = {}; D.ELEMENTS.forEach(e => prima[e] = g.attacks[e]);
+    const bottinoPrima = g.totalAttacks();
+    cardeSpade[0].click();
+    await nextTick(); await nextTick();
+    const atteso = arma.els.length===1 ? D.BAL.weaponGrant : Math.ceil(D.BAL.weaponGrant/2);
+    const ok = arma.els.every(e => g.attacks[e] >= prima[e] + atteso);
+    check('raccolta una spada arrivano gli attacchi del suo tipo',
+          ok && g.totalAttacks() > bottinoPrima,
+          arma.name+' atteso +'+atteso+' su '+arma.els.join('+'));
+  } else {
+    check('raccolta una spada arrivano gli attacchi del suo tipo', true, 'nessuna spada offerta in questa mano');
+  }
 
   setup(g,{wave:1, el:'fire', attacks:{fire:1,water:1,nature:1,light:1,darkness:1},
            artifacts:[D.ARTIFACT_BY_ID['s1w'], D.ARTIFACT_BY_ID['s2fl']]});
@@ -399,6 +439,98 @@ async function run(){
   await nextTick(); await nextTick();
   check('il boss paga anche il bottino in attacchi', g.totalAttacks() > beforeSpoils,
         beforeSpoils+' -> '+g.totalAttacks());
+
+  /* --------------------------------------------- resoconto dell'onda */
+  /* Sotto ?fast il pannello viene costruito ma non mostrato (altrimenti il bot
+     resterebbe piantato ad aspettare un tocco): qui si legge quello che c'e'
+     scritto dentro, che e' la cosa che conta. */
+  head('Resoconto dell-onda');
+  const corpo = () => DOC.getElementById('report-body');
+  const gettoni = box => Array.prototype.map.call(box.querySelectorAll('.rep-chip'),
+        c => c.querySelector('b').textContent + ' ' +
+             D.ELEMENTS.find(e => c.classList.contains(e))).join(', ');
+
+  g.newGame();
+  setup(g,{wave:12, el:'nature', attacks:{fire:30,water:9,nature:9,light:9,darkness:9},
+           artifacts:[D.ARTIFACT_BY_ID['s1w']]});
+  g.quest = D.QUESTS.find(q=>q.type==='lastHit_fire'); g.questFailed=false; g.renderQuest();
+  const acquaPrima = g.attacks.water;
+  await killWith(g,'fire');
+  const bloccoQuest = corpo().querySelector('.rep-block');
+  check('quest riuscita: il resoconto la da per completa',
+        bloccoQuest.classList.contains('ok') &&
+        bloccoQuest.querySelector('.rep-stamp').textContent==='complete',
+        bloccoQuest.className+' / '+bloccoQuest.querySelector('.rep-stamp').textContent);
+  check('e ne scrive il nome', bloccoQuest.querySelector('.rep-title').textContent==='Blazing Finale',
+        bloccoQuest.querySelector('.rep-title').textContent);
+  const attesoPremio = Math.max(1, D.rewardUnit(21));
+  check('il premio scritto e quello che paga la quest',
+        gettoni(bloccoQuest.querySelector('.rep-line'))==='+'+attesoPremio+' fire',
+        gettoni(bloccoQuest.querySelector('.rep-line')));
+  const bloccoScudi = corpo().querySelectorAll('.rep-block')[1];
+  check('lo scudo compare col suo nome',
+        /Eternal Waterfall Shield/.test(bloccoScudi.textContent), bloccoScudi.textContent);
+  check('col +2 acqua che ha davvero restituito',
+        gettoni(bloccoScudi)==='+2 water' && g.attacks.water===acquaPrima+2,
+        gettoni(bloccoScudi)+' / '+acquaPrima+'->'+g.attacks.water);
+  check('il resoconto non blocca il gioco: si arriva al bottino',
+        g.phase==='reward' && DOC.querySelectorAll('#reward-inner .pack').length>0, g.phase);
+
+  setup(g,{wave:12, el:'nature', attacks:{fire:30,water:9,nature:9,light:9,darkness:9}});
+  g.quest = D.QUESTS.find(q=>q.type==='lastHit_light'); g.questFailed=false; g.renderQuest();
+  await killWith(g,'fire');
+  const fallita = corpo().querySelector('.rep-block');
+  check('quest fallita: bollo failed e premio perso',
+        fallita.classList.contains('ko') &&
+        fallita.querySelector('.rep-stamp').textContent==='failed' &&
+        fallita.querySelector('.rep-none').textContent==='lost',
+        fallita.className+' / '+fallita.textContent);
+  check('e senza gettoni di premio', fallita.querySelectorAll('.rep-chip').length===0);
+
+  setup(g,{wave:21, el:'fire', attacks:{fire:60,water:9,nature:9,light:9,darkness:9},
+           artifacts:[D.ARTIFACT_BY_ID['s1f']]});
+  g.challenge = Object.assign({}, D.CHALLENGES.find(c=>c.type==='noEffectiveDamage'), {reflected:0});
+  await killWith(g,'fire');
+  check('sul boss il resoconto parla della sfida',
+        /Elemental Armor/.test(corpo().textContent) && /survived/i.test(corpo().textContent),
+        corpo().textContent);
+  check('e il pulsante manda agli artefatti, non al bottino',
+        DOC.getElementById('btn-report-go').textContent==='Claim an artifact',
+        DOC.getElementById('btn-report-go').textContent);
+  check('il titolo cambia sul boss',
+        DOC.getElementById('report-title').textContent==='The boss falls',
+        DOC.getElementById('report-title').textContent);
+
+  /* --------------------------------------- il pacchetto misterioso */
+  head('Il pacchetto misterioso si spiega');
+  const NOMI = ['Empty hands','Thin pack','Fair pack','Rich pack','Double pack'];
+  let vistiNomi = {};
+  for (let giro=0; giro<12; giro++){
+    setup(g,{wave:23, el:'fire', attacks:{fire:60}});
+    g.quest = null; g.renderQuest();
+    await killWith(g,'fire');
+    const my = DOC.querySelector('#reward-inner .pack.mystery');
+    if (!my) throw new Error('nessun pacchetto misterioso al giro '+giro);
+    const prima = g.totalAttacks();
+    my.click();
+    await nextTick(); await nextTick();
+    const nome = DOC.getElementById('mystery-name').textContent;
+    vistiNomi[nome] = true;
+    if (NOMI.indexOf(nome) < 0) throw new Error('nome sconosciuto: '+nome);
+    let somma = 0;
+    DOC.querySelectorAll('#mystery-chips .rep-chip b').forEach(b => somma += +b.textContent);
+    if (g.totalAttacks() !== prima + somma)
+      throw new Error('gettoni '+somma+' ma incassati '+(g.totalAttacks()-prima));
+  }
+  check('il pannello dice sempre che pacchetto era, con nomi noti',
+        Object.keys(vistiNomi).every(n => NOMI.indexOf(n)>=0), Object.keys(vistiNomi).join(', '));
+  check('e gli attacchi elencati sono esattamente quelli incassati (12 giri)', true);
+  check('il caso vuoto scrive che non si guadagna niente',
+        (function(){
+           g.revealMystery('skull', {});
+           return DOC.getElementById('mystery-name').textContent==='Empty hands' &&
+                  DOC.querySelector('#mystery-chips .rep-none').textContent==='no attacks gained';
+        })());
 
   /* ----------------------------------------------------- salvataggio */
   head('Salvataggio');

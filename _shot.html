@@ -10,6 +10,17 @@ f.src = 'element.html?' + (q.get('q') || 'auto&debug');
 document.body.appendChild(f);
 
 const drive = q.get('drive');
+const pausa = n => new Promise(r => setTimeout(r, n));
+
+/* victory() adesso si ferma sul resoconto dell'onda e aspetta un tocco:
+   chi vuole la schermata del bottino deve passarci sopra. */
+async function passaResoconto(){
+  await pausa(900);
+  const doc = f.contentDocument;
+  const rep = doc.getElementById('report');
+  if (rep && !rep.hidden) { doc.getElementById('btn-report-go').click(); await pausa(400); }
+}
+
 f.onload = () => setTimeout(async () => {
   const g = f.contentWindow.__el;
   if (!g || !drive) return;
@@ -24,15 +35,37 @@ f.onload = () => setTimeout(async () => {
   }
   if (cmd === 'reward')   { if (q.get('wave')) { g.wave = +q.get('wave'); g.createEnemy(); }
                             if (q.get('next')) g.nextElement = q.get('next');
-                            g.enemy.hp = 0; await g.victory(); }
+                            g.enemy.hp = 0; g.victory(); await passaResoconto(); }
+  /* il resoconto dell'onda: `hit` prima, cosi' la quest ha una storia da raccontare */
+  if (cmd === 'report')   { g.wave = +(q.get('wave') || 12); g.nextElement = q.get('el') || 'nature';
+                            (q.get('art') || '').split(',').filter(Boolean)
+                              .forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id]));
+                            g.attacks = {fire:9,water:9,nature:9,light:9,darkness:9};
+                            g.createEnemy();
+                            if (q.get('quest')) { g.quest = D.QUESTS.find(x => x.type === q.get('quest')); g.renderQuest(); }
+                            if (q.get('fail')) g.questFailed = true;
+                            g.enemy.hp = 0; g.victory(); await pausa(1200); }
+  if (cmd === 'mystery')  { g.wave = +(q.get('wave') || 31); g.createEnemy();
+                            g.enemy.hp = 0; g.victory(); await passaResoconto();
+                            const doc = f.contentDocument;
+                            const my = doc.querySelector('#reward-inner .pack.mystery');
+                            if (my) { my.click(); await pausa(500); } }
   if (cmd === 'hit')      { g.wave=+(q.get('wave')||40); g.nextElement=q.get('el')||'nature';
                             g.attacks={fire:9,water:9,nature:9,light:9,darkness:9}; g.createEnemy();
                             g.attack(q.get('with')||'fire'); }
-  if (cmd === 'artifact') { g.wave = 11; g.nextElement = arg2El(q.get('el')); g.createEnemy(); g.enemy.hp = 0; await g.victory(); }
+  if (cmd === 'artifact') { g.wave = 11; g.nextElement = arg2El(q.get('el')); g.createEnemy(); g.enemy.hp = 0; g.victory(); await passaResoconto(); }
   if (cmd === 'shelf')    { ['w1f','s1w','w2dl','s2fl','b1'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.renderShelf(); }
   if (cmd === 'ending')   { g.wave = 91; ['w1f','s1w','w2dl'].forEach(id => g.artifacts.push(D.ARTIFACT_BY_ID[id])); g.showEnding(); }
   if (cmd === 'gameover') { Object.keys(g.attacks).forEach(k => g.attacks[k] = 0); g.renderAttacks(); g.gameOver(); }
   if (cmd === 'late')     { g.wave = +(q.get('wave') || 91); g.nextElement = arg2El(q.get('el')); g.createEnemy(); }
+  /* ferma tutte le animazioni a un istante dato: senza, in headless si scatta
+     a una fase a caso e due scatti non si possono confrontare */
+  const freeze = q.get('freeze');
+  if (freeze !== null) {
+    await pausa(300);
+    f.contentDocument.getAnimations().forEach(a => { a.pause(); a.currentTime = +freeze; });
+  }
+
   function arg2El(v) { return v || 'fire'; }
 }, 600);
 </script></body></html>
