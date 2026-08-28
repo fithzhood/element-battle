@@ -4,7 +4,6 @@ Un mostro alla volta. Cinque elementi in mano, contati: ogni colpo che tiri è u
 colpo in meno. Quando finiscono, finisce la partita.
 
 **Gioca:** https://fithzhood.github.io/element-battle/element.html
-**Versione clear** (senza easter egg): https://fithzhood.github.io/element-battle/element-clear.html
 
 ## Come funziona
 
@@ -20,18 +19,18 @@ colpo in meno. Quando finiscono, finisce la partita.
   che ricrescono a ogni combattimento).
 - Onda 91, l'ultimo boss: finisce la campagna. Poi si può proseguire all'infinito.
 
-## Le due versioni
+## La versione clear
 
-`element.html` e' il gioco completo. `element-clear.html` e' lo stesso gioco
-**senza l'easter egg**: non e' una copia a mano, si rigenera con
-`python costruisci-clear.py`, che ritaglia da `element.js` le funzioni che
-realizzano il segreto e controlla che nel file prodotto non ne resti traccia.
-Le due versioni condividono `element.css`, `element-data.js` e `img/`, quindi
-ogni modifica al gioco vale per entrambe: va solo rilanciato lo script.
+`costruisci-clear.py` genera una copia del gioco **senza l'easter egg**: toglie
+il meccanismo, i metodi morti, i rami che lo consultavano e le regole di stile
+relative, poi cerca le parole che lo tradirebbero e si rifiuta di scrivere se ne
+trova una. I file prodotti vanno nel repo separato **`element-clear`**, che sta
+apposta da un'altra parte: qui il gioco completo e questo README ne parlano, e
+chi guarda quel repo non deve trovare traccia di niente.
 
-Il banco di prova gira su tutte e due: `_test.html` per quella completa,
-`_test.html?target=clear` per l'altra, che al posto delle prove sull'uovo
-verifica che non ne sia rimasto niente.
+Il banco di prova gira su entrambe: `_test.html` per questa,
+`_test.html?target=clear` per l'altra (con i file generati presenti in locale),
+che al posto delle prove sull'uovo verifica che non ne sia rimasto niente.
 
 ## Easter egg
 
@@ -53,8 +52,7 @@ funziona anche offline dentro l'APK.
 | `element-data.js` | tabelle: danni, mostri, quest, boss, artefatti, manopole del bilanciamento |
 | `element.js` | motore, effetti, salvataggi, lettura zip |
 | `img/` | illustrazioni ridotte in WebP (le originali 2048² stanno in OneDrive) |
-| `element-clear.html` / `element-clear.js` | versione senza easter egg, generata |
-| `costruisci-clear.py` | la genera e verifica che l'uovo sia sparito |
+| `costruisci-clear.py` | genera la versione clear (va nel repo `element-clear`) |
 | `_test.html` | banco di prova: 81 verifiche, `?target=clear` per l'altra versione |
 | `_bot.html` | bot che gioca da solo e misura il bilanciamento |
 | `_shot.html` | ponte per gli screenshot a misura di telefono |
