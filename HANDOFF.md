@@ -129,9 +129,14 @@ da sola sugli URL dei brani: `element.js` la legge dal proprio tag `<script>`
 - **la collezione resta sotto gli occhi** mentre si sceglie l'artefatto del
   boss (`renderOwned`): senza, per sapere se un doppione conviene bisognava
   ricordarselo.
-- **easter egg**: pressione lunga 3 secondi sullo stemma dell'elemento → zip di
-  GIF → i mostri diventano quelle, premio a pieno schermo lungo quanto i PV.
-  Solo nella versione completa.
+- **easter egg**: **tre tocchi sul titolo** → zip di GIF → i mostri diventano
+  quelle, premio a pieno schermo lungo quanto i PV. Solo nella versione
+  completa. I titoli sono due, uno per schermata: `#start h1` sulla schermata
+  iniziale e `#enemy-name` durante la partita, cosi' si accende anche a corsa
+  avviata. L'archivio si legge **in sottofondo**: alla ventesima GIF il mostro
+  in scena ne prende una e si gioca, il resto continua a scendere. Le GIF gia'
+  caricate non si buttano finche' non ne arriva almeno una nuova, se no uno zip
+  sbagliato lasciava a mani vuote.
 
 ---
 

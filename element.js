@@ -303,7 +303,7 @@ async function inflateRaw(bytes) {
 }
 
 /* Estrae le sole .gif da uno zip, senza librerie esterne (funziona anche offline). */
-async function gifsFromZip(file) {
+async function gifsFromZip(file, arrivata) {
     const buf = await file.arrayBuffer();
     const dv  = new DataView(buf);
     let eocd = -1;
@@ -339,7 +339,13 @@ async function gifsFromZip(file) {
         let bytes = null;
         if (method === 0) bytes = raw;
         else if (method === 8) { try { bytes = await inflateRaw(raw); } catch (e) { bytes = null; } }
-        if (bytes) out.push(new Blob([bytes], { type: 'image/gif' }));
+        if (bytes) {
+            const blob = new Blob([bytes], { type: 'image/gif' });
+            out.push(blob);
+            /* si avvisa una per una: chi chiama puo' cominciare a usarle senza
+               aspettare la fine dell'archivio */
+            if (arrivata) arrivata(blob, out.length);
+        }
     }
     return out;
 }
@@ -1614,32 +1620,24 @@ class Game {
     /* ------------------------------------------------- modalità GIF (uovo) */
 
     bindEasterEgg() {
-        const target = this.dom.badge;
-        let timer = null;
-        const start = e => {
-            if (e.cancelable) e.preventDefault();
-            if (timer) return;
-            target.classList.add('charging');
-            timer = setTimeout(() => {
-                target.classList.remove('charging');
-                timer = null;
-                this.askZip();
-            }, 3000);
-        };
-        const stop = () => {
-            target.classList.remove('charging');
-            if (timer) { clearTimeout(timer); timer = null; }
-        };
-        if ('ontouchstart' in window) {
-            target.addEventListener('touchstart', start, { passive: false });
-            target.addEventListener('touchend', stop);
-            target.addEventListener('touchcancel', stop);
-        } else {
-            target.addEventListener('mousedown', start);
-            target.addEventListener('mouseup', stop);
-            target.addEventListener('mouseleave', stop);
-        }
-        target.addEventListener('contextmenu', e => e.preventDefault());
+        /* Tre tocchi sul titolo. Sono due titoli, uno per schermata: quello del
+           gioco sulla schermata iniziale e il nome del mostro durante la
+           partita — cosi' si puo' accendere anche a corsa avviata, che era il
+           bello del vecchio innesco.
+           Niente `preventDefault` e niente eventi touch a mano: il click
+           normale arriva anche dal dito, e cosi' non si rompe il doppio tocco
+           per lo zoom. */
+        const soglia = 3, finestra = 700;
+        [$('#start h1'), this.dom.name].forEach(titolo => {
+            if (!titolo) return;
+            let n = 0, ultimo = 0;
+            titolo.addEventListener('click', () => {
+                const ora = Date.now();
+                n = (ora - ultimo < finestra) ? n + 1 : 1;
+                ultimo = ora;
+                if (n >= soglia) { n = 0; this.askZip(); }
+            });
+        });
     }
 
     askZip() {
@@ -1653,17 +1651,46 @@ class Game {
     async loadZip(file) {
         try {
             this.toast('Reading archive...');
-            const blobs = await gifsFromZip(file);
-            if (!blobs.length) { this.toast('No GIF found in that ZIP'); return; }
-            this.gifs.forEach(u => URL.revokeObjectURL(u));
-            this.gifs = blobs.map(b => URL.createObjectURL(b));
-            this.usedGifs = new Set();
-            this.gifMode = true;
-            this.assignGif();
-            this.dom.changeBtn.hidden = false;
-            this.renderAll();
-            this.toast(this.gifs.length + ' GIF loaded');
-            Sfx.reward();
+
+            /* Non si aspetta tutto l'archivio: appena ce ne sono abbastanza si
+               parte, e il resto continua a scendere mentre si gioca. Con un
+               archivio grosso si restava fermi a guardare uno schermo immobile
+               per parecchi secondi.
+
+               Le vecchie non si buttano prima di sapere che ce ne sono di
+               nuove: uno zip sbagliato non deve lasciare a mani vuote chi ne
+               aveva gia' caricate. */
+            const BASTANO = 20;
+            const vecchie = this.gifs, nuove = [];
+            let partita = false;
+            const avvia = () => {
+                if (partita || !nuove.length) return;
+                partita = true;
+                vecchie.forEach(u => URL.revokeObjectURL(u));
+                this.gifs = nuove;          /* il seguito continua a entrare qui */
+                this.usedGifs = new Set();
+                this.gifMode = true;
+                this.dom.changeBtn.hidden = false;
+                /* il mostro in scena ne prende una a caso subito */
+                if (this.enemy) { this.assignGif(); this.renderAll(); }
+                Sfx.reward();
+                this.toast('GIF mode on — ' + nuove.length + ' loaded, more coming');
+            };
+
+            try {
+                const tutte = await gifsFromZip(file, (blob, n) => {
+                    nuove.push(URL.createObjectURL(blob));
+                    if (n >= BASTANO) avvia();
+                });
+                if (!tutte.length) { this.toast('No GIF found in that ZIP'); return; }
+                /* archivio piccolo: non si e' arrivati a venti, si parte lo stesso */
+                avvia();
+                this.toast(nuove.length + ' GIF loaded');
+            } finally {
+                /* se non si e' mai partiti, gli indirizzi creati non li tiene
+                   nessuno: vanno restituiti, se no restano appesi in memoria */
+                if (!partita) nuove.forEach(u => URL.revokeObjectURL(u));
+            }
         } catch (err) {
             console.error(err);
             this.toast('Could not read that ZIP');
@@ -1672,10 +1699,9 @@ class Game {
 
     switchToNormal() {
         this.gifMode = false;
-        this.enemy.gif = null;
-        this.enemy.frozen = null;
         this.dom.changeBtn.hidden = true;
-        this.renderAll();
+        /* dal menu si puo' spegnere anche senza un mostro in scena */
+        if (this.enemy) { this.enemy.gif = null; this.enemy.frozen = null; this.renderAll(); }
     }
 
     /* mostra la GIF animata per `damage` secondi, poi torna al fermo immagine */
