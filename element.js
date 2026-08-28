@@ -1711,13 +1711,14 @@ class Game {
 
     /* mostra la GIF animata per `damage` secondi, poi torna al fermo immagine */
     playGifBurst(damage) {
-        if (!this.gifMode || !this.enemy.gif || this.enemy.hp <= 0) return Promise.resolve();
+        /* anche il colpo che uccide: vale i suoi secondi come tutti gli altri,
+           e prima si saltava proprio quello che li vale di piu' */
+        if (!this.gifMode || !this.enemy.gif) return Promise.resolve();
         this.busy = true;
         this.renderAttacks();
-        this.dom.gifSlot.innerHTML = '';
-        const img = el('img', 'gif-live');
-        img.src = this.enemy.gif;
-        this.dom.gifSlot.appendChild(img);
+        const n = this.gifNodes();
+        n.canvas.hidden = true;
+        n.img.hidden = false;
         return new Promise(res => {
             setTimeout(() => {
                 this.busy = false;
@@ -1728,17 +1729,44 @@ class Game {
         });
     }
 
+    /* I due nodi dello slot si costruiscono una volta e restano. Ricrearli a
+       ogni colpo — che e' quello che si faceva — vuol dire far ripartire da zero
+       la decodifica della GIF: con archivi di GIF grandi e' proprio li' che
+       l'animazione arrancava, non nel resto del gioco. */
+    gifNodes() {
+        if (!this._gifImg) {
+            this._gifImg = el('img', 'gif-live');
+            this._gifCanvas = el('canvas', 'gif-frozen');
+        }
+        if (this._gifImg.parentNode !== this.dom.gifSlot) {
+            this.dom.gifSlot.innerHTML = '';
+            this.dom.gifSlot.appendChild(this._gifCanvas);
+            this.dom.gifSlot.appendChild(this._gifImg);
+        }
+        if (this.enemy && this.enemy.gif && this._gifImg.getAttribute('src') !== this.enemy.gif) {
+            this._gifImg.src = this.enemy.gif;
+        }
+        return { img: this._gifImg, canvas: this._gifCanvas };
+    }
+
+    /* Ferma la GIF sul fotogramma in cui si trova adesso, disegnandolo sul
+       canvas dalla stessa immagine che sta gia' girando: niente seconda copia
+       da decodificare. */
     showFrozenGif() {
         if (!this.gifMode || !this.enemy.gif) return;
-        this.dom.gifSlot.innerHTML = '';
-        const canvas = el('canvas', 'gif-frozen');
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width; canvas.height = img.height;
-            canvas.getContext('2d').drawImage(img, 0, 0);
+        const n = this.gifNodes();
+        const posa = () => {
+            if (!n.img.naturalWidth) return;
+            if (n.canvas.width !== n.img.naturalWidth) {
+                n.canvas.width = n.img.naturalWidth;
+                n.canvas.height = n.img.naturalHeight;
+            }
+            try { n.canvas.getContext('2d').drawImage(n.img, 0, 0); } catch (e) { return; }
+            n.canvas.hidden = false;
+            n.img.hidden = true;
         };
-        img.src = this.enemy.gif;
-        this.dom.gifSlot.appendChild(canvas);
+        if (n.img.complete && n.img.naturalWidth) posa();
+        else n.img.onload = posa;
     }
 
     /* GIF a pieno schermo come premio: dura quanto i PV massimi, più l'eccesso di danno */

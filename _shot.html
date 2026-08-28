@@ -75,6 +75,22 @@ f.onload = () => setTimeout(async () => {
                             }
                             c.click(); await pausa(700); }
   /* mano magra: la luce e' carica e il pulsante lo dice */
+  /* barra con tutti i pulsanti accesi, per vedere se ci sta */
+  if (cmd === 'barra')    { g.wave = +(q.get('wave') || 24); g.nextElement = arg2El(q.get('el'));
+                            g.createEnemy(); f.contentDocument.getElementById('btn-change').hidden = false;
+                            /* il caso peggiore: contatori a tre cifre */
+                            g.best.normal = 100; g.wave = 100; g.renderTop();
+                            const t = f.contentDocument.getElementById('topbar');
+                            /* scrollWidth mente con la flexbox: quello che conta e' se
+                               l'ultimo chip finisce dentro il bordo destro della barra */
+                            const nx = f.contentDocument.getElementById('next-chip').getBoundingClientRect();
+                            const br = t.getBoundingClientRect();
+                            const avanzo = Math.round(br.right - nx.right);
+                            /* lo spazio libero e' quello che si mangia lo spaziatore:
+                               a zero la barra e' al limite e il prossimo pixel esce */
+                            const sp = Math.round(t.querySelector('.spacer').getBoundingClientRect().width);
+                            document.title = (avanzo >= 0 ? 'CI STA' : 'TRABOCCA di ' + (-avanzo) + 'px')
+                                             + ' · margine ' + sp + 'px'; }
   if (cmd === 'carica')   { g.wave = +(q.get('wave') || 30); g.nextElement = arg2El(q.get('el'));
                             g.createEnemy();
                             g.attacks = {fire:2,water:1,nature:3,light:2,darkness:0};

@@ -24,7 +24,7 @@ VIETATE = [r'(?<!strin)gif', 'zip', 'easter', 'DecompressionStream',
 VIETATE_RIGHE = ['gif', 'zip', 'easter', 'DecompressionStream', 'longPress']
 
 FUNZIONI_MODULO = ['inflateRaw', 'gifsFromZip']
-METODI = ['bindEasterEgg', 'askZip', 'loadZip', 'assignGif',
+METODI = ['bindEasterEgg', 'askZip', 'loadZip', 'assignGif', 'gifNodes',
           'switchToNormal', 'playGifBurst', 'showFrozenGif', 'playVictoryGif']
 
 # sostituzioni puntuali nei punti dove il motore consulta la modalita' nascosta
@@ -61,12 +61,25 @@ def togli_blocco(testo, intestazione, indent):
     if i < 0:
         return testo, False
     inizio = testo.rfind('\n', 0, i) + 1
-    # si porta via anche le righe di commento immediatamente sopra
+    # Si porta via anche il commento che sta sopra. Non basta guardare se la
+    # riga comincia con `*`: un commento di piu' righe scritto in prosa ha le
+    # righe di mezzo che cominciano con una parola qualsiasi, e restavano li'
+    # (28 ago 2026: una riga sfuggita cosi' ha fatto scattare il guardiano).
+    # Quando si incontra una riga che CHIUDE un commento, si risale fino al `/*`.
+    dentro = False
     while True:
         prec = testo.rfind('\n', 0, inizio - 1) + 1
         riga = testo[prec:inizio].strip()
+        if dentro:
+            inizio = prec
+            if '/*' in riga:
+                dentro = False
+            continue
         if riga.startswith('/*') or riga.startswith('*') or riga.startswith('//'):
             inizio = prec
+        elif riga.endswith('*/'):
+            inizio = prec
+            dentro = '/*' not in riga
         else:
             break
     chiusura = '\n' + ' ' * indent + '}\n'
@@ -115,14 +128,33 @@ def pulisci_css():
     return re.sub(r'\n{3,}', '\n\n', testo)
 
 
+def togli_elemento(html, ident):
+    """toglie l'elemento con quell'id, anche se sta su piu' righe
+
+       Prima si andava per stringa esatta, e bastava riscrivere un pulsante su
+       tre righe invece che su una perche' restasse dentro (28 ago 2026)."""
+    i = html.find('id="%s"' % ident)
+    if i < 0:
+        return html, False
+    apertura = html.rfind('<', 0, i)
+    tag = re.match(r'<([a-zA-Z0-9]+)', html[apertura:]).group(1)
+    fine = html.find('</%s>' % tag, i)
+    if fine < 0:
+        return html, False
+    fine += len(tag) + 3
+    riga = html.rfind('\n', 0, apertura) + 1      # via anche l'indentazione
+    if html[fine:fine + 1] == '\n':
+        fine += 1
+    return html[:riga] + html[fine:], True
+
+
 def pulisci_html():
     html = io.open('element.html', encoding='utf-8').read()
-    for pezzo in ('      <button id="btn-change" class="chip ghost" hidden>Art</button>\n',
-                  '          <div id="gif-slot" hidden></div>\n',
-                  '  <div id="gifshow" class="overlay" hidden></div>\n\n'):
-        if pezzo not in html:
-            print('  ATTENZIONE, pezzo html non trovato:', pezzo.strip()[:50])
-        html = html.replace(pezzo, '')
+    for ident in ('btn-change', 'gif-slot', 'gifshow'):
+        html, tolto = togli_elemento(html, ident)
+        # fatale, non un avviso: un avviso scorre via e la clear esce sporca
+        if not tolto:
+            raise SystemExit('elemento html non trovato: ' + ident)
     html = html.replace('element.js?v=', 'element-clear.js?v=')
     html = html.replace('element.css?v=', 'element-clear.css?v=')
     return html

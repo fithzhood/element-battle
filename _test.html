@@ -385,6 +385,44 @@ async function run(){
   await nextTick(); await nextTick();
   check('nuovo nemico, nuova GIF', !!g.enemy.gif);
 
+  /* fluidita-: i nodi non si ricreano a ogni colpo, se no la GIF riparte da
+     capo con la decodifica ed e- li- che arranca */
+  setup(g,{wave:30, el:'fire', attacks:{fire:40}});
+  /* GIF propria, non quella lasciata dalle prove di prima: una verifica che
+     dipende dallo stato altrui prima o poi fallisce senza motivo apparente.
+     Il blob va creato NELLA finestra del gioco: uno fatto qui fuori l'iframe
+     non lo carica (`complete` vero ma `naturalWidth` zero). */
+  const W2 = DOC.defaultView;
+  g.gifs = [W2.URL.createObjectURL(new W2.Blob([GIF1PX], {type:'image/gif'}))];
+  g.usedGifs = new Set();
+  g.gifMode = true; g.assignGif(); g.renderAll();
+  await g.playGifBurst(1);
+  const nodoImg = DOC.querySelector('#gif-slot .gif-live');
+  const nodoCan = DOC.querySelector('#gif-slot .gif-frozen');
+  check('nello slot ci sono immagine viva e fotogramma fermo', !!nodoImg && !!nodoCan);
+  /* La posa vera sul canvas si puo- vedere solo in un browser vero: in headless
+     con --virtual-time-budget l-immagine non viene mai decodificata
+     (naturalWidth resta 0), come per il render audio di _musica.html. Quello
+     che si puo- verificare qui e- la scelta giusta nel frattempo: se non si
+     puo- posare, si lascia viva l-animazione e ci si prenota per quando
+     l-immagine arriva, invece di mostrare un canvas vuoto. */
+  await new Promise(r => setTimeout(r, 60));
+  g.showFrozenGif();
+  check('senza immagine pronta resta viva, e si prenota la posa',
+        nodoImg.hidden===false && typeof nodoImg.onload === 'function',
+        'hidden '+nodoImg.hidden+', onload '+typeof nodoImg.onload);
+  await g.playGifBurst(1);
+  check('un secondo colpo riusa gli stessi nodi',
+        DOC.querySelector('#gif-slot .gif-live')===nodoImg &&
+        DOC.querySelector('#gif-slot .gif-frozen')===nodoCan);
+
+  /* il colpo che uccide vale i suoi secondi come tutti gli altri */
+  g.enemy.hp = 0;
+  const colpoFinale = g.playGifBurst(3);
+  check('il colpo che uccide mostra comunque l-animazione',
+        nodoImg.hidden===false, 'img hidden '+nodoImg.hidden);
+  await colpoFinale;
+
   g.switchToNormal();
   check('il pulsante Art riporta alle illustrazioni', g.gifMode===false && !g.enemy.gif);
   check('e il pulsante sparisce', DOC.getElementById('btn-change').hidden===true);
