@@ -540,15 +540,25 @@ async function run(){
         })());
 
   /* --------------------------------------------------------- la luce */
-  head('La luce rende solo quando la mano e- magra');
+  head('La luce rende solo quando un tipo e- agli sgoccioli');
   setup(g,{wave:40, el:'fire', attacks:{fire:20,water:20,nature:20,light:5,darkness:5}});
-  check('la soglia e- onda / lightRefundDiv',
-        g.lightSoglia()===Math.floor(40/D.BAL.lightRefundDiv), g.lightSoglia());
-  check('mano ricca: luce scarica', g.lightArmata()===false,
-        g.totalAttacks()+' attacchi, soglia '+g.lightSoglia());
+  check('la soglia e- BAL.lightRefundMax', g.lightSoglia()===D.BAL.lightRefundMax, g.lightSoglia());
+  check('tutti riforniti: luce scarica', g.lightArmata()===false,
+        'piu- scarso: '+g.lightBersaglio()+' a '+g.attacks[g.lightBersaglio()]+', soglia '+g.lightSoglia());
+
   const ricca = g.totalAttacks();
   await g.attack('light');
   check('e infatti non rende niente', g.totalAttacks()===ricca-1, ricca+' -> '+g.totalAttacks());
+
+  /* la mano grossa non conta piu-: conta il buco */
+  setup(g,{wave:40, el:'fire', attacks:{fire:40,water:40,nature:40,light:9,darkness:1}});
+  check('mano ricchissima ma un tipo a secco: luce carica',
+        g.lightArmata()===true && g.lightBersaglio()==='darkness',
+        g.totalAttacks()+' attacchi in tutto, ma buio a '+g.attacks.darkness);
+  const buco = g.attacks.darkness, tuttoPrima = g.totalAttacks();
+  await g.attack('light');
+  check('e rattoppa proprio quel buco', g.attacks.darkness===buco+1 && g.totalAttacks()===tuttoPrima,
+        'buio '+buco+' -> '+g.attacks.darkness);
 
   setup(g,{wave:40, el:'fire', attacks:{fire:5,water:2,nature:9,light:3,darkness:0}});
   check('mano magra: luce carica', g.lightArmata()===true,
@@ -630,7 +640,14 @@ async function run(){
   setupRaw(g,{wave:21, el:'fire', attacks:{fire:60,water:9,nature:9,light:9,darkness:9}});
   check('la calma del saggio disarma il boss', g.challenge===null && g.bossNerfed===true,
         g.challenge+'/'+g.bossNerfed);
+  const luceDisarmato = g.attacks.light;
   await killWith(g,'fire');
+  check('il boss disarmato paga anche in luce',
+        g.attacks.light >= luceDisarmato + D.BAL.nerfedLight,
+        luceDisarmato + ' -> ' + g.attacks.light + ' (+' + D.BAL.nerfedLight + ' attesi)');
+  check('e il resoconto lo scrive fra i premi',
+        /Reward/.test(corpo().textContent) &&
+        corpo().textContent.indexOf('+' + D.BAL.nerfedLight) >= 0, corpo().textContent);
   check('il resoconto dice che la sfida e- saltata',
         /skipped/i.test(corpo().textContent), corpo().textContent);
   const scelte = D.BAL.nerfedPicks;

@@ -266,15 +266,27 @@ in tutto, e rende il tipo di cui si e' **piu' poveri** (a parita', il primo
 nell'ordine degli elementi: deve essere prevedibile). Da fonte inesauribile a
 rete di sicurezza — per riaccenderla bisogna essersi svuotati la mano.
 
-Misurato, 100 partite col gioco forte:
+**Seconda versione, la sera stessa.** La regola sul totale della mano e' stata
+sostituita da una che guarda **solo il tipo di cui si ha di meno**: se ne
+restano meno di `BAL.lightRefundMax`, la luce ne rende uno. Si legge guardando i
+pulsanti, senza sommare niente — ma **non frena quasi nulla**, perche' con
+cinque tipi e pacchetti casuali un buco c'e' quasi sempre:
 
-| soglia | campagna completata | mediana |
-|---|---|---|
-| sempre (com'era) | 73% | 91 |
-| sotto onda/1 | 61% | 91 |
-| sotto onda/1.5 | 40% | 17 |
-| **sotto onda/2 (adesso)** | **23%** | 12 |
-| sotto onda/3 | 13% | 12 |
+| regola | campagna completata |
+|---|---|
+| sempre (com'era all'inizio) | 73% |
+| totale sotto onda/1.5 | 40% |
+| totale sotto onda/2 | 23% |
+| totale sotto onda/3 | 13% |
+| **un tipo sotto 1** | 63% |
+| **un tipo sotto 2** | 70% |
+| **un tipo sotto 3 (adesso)** | **73%** |
+| un tipo sotto 5 | 75% |
+
+Cioe': la regola sul tipo piu' scarso, a qualunque soglia, riporta il gioco
+dov'era prima del freno. Se un giorno si vuole di nuovo che la luce costi, la
+leva e' tornare al conto sul **totale** della mano, non abbassare questa
+soglia.
 
 Il pulsante della luce si accende (bollino `+1` dorato, classe `charged`)
 quando il rimborso e' armato: senza, sarebbe una regola invisibile.
