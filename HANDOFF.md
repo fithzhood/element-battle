@@ -278,15 +278,26 @@ cinque tipi e pacchetti casuali un buco c'e' quasi sempre:
 | totale sotto onda/1.5 | 40% |
 | totale sotto onda/2 | 23% |
 | totale sotto onda/3 | 13% |
-| **un tipo sotto 1** | 63% |
-| **un tipo sotto 2** | 70% |
-| **un tipo sotto 3 (adesso)** | **73%** |
-| un tipo sotto 5 | 75% |
+| un tipo sotto 1 · 2 · 3 · 5 (soglia fissa) | 63% · 70% · 73% · 75% |
+| un tipo sotto onda/2 · /3 · **/4 (adesso)** · /6 · /8 | 76% · 71% · **~70%** · 65% · 62% |
 
-Cioe': la regola sul tipo piu' scarso, a qualunque soglia, riporta il gioco
-dov'era prima del freno. Se un giorno si vuole di nuovo che la luce costi, la
-leva e' tornare al conto sul **totale** della mano, non abbassare questa
-soglia.
+**La soglia sul tipo piu' scarso non frena, qualunque numero le si dia.** Da 1 a
+onda/8 il gioco resta fra il 62% e il 76%, cioe' dov'era senza freno: con
+quattro tipi e pacchetti casuali **un buco c'e' quasi sempre**, quindi la
+condizione e' quasi sempre vera. Attenzione a leggere una sola misura da 100
+partite: `onda/4` era uscito all'81%, ripetuto a 200 ha dato 75% e 66%. Su una
+distribuzione a due gobbe servono almeno 200 partite, e meglio due giri.
+
+**Se si vuole il freno tenendo questa forma**, c'e' il secondo lucchetto
+`BAL.lightRefundTotal` (spento di serie, 0): pretende che *anche* la mano
+intera stia sotto `onda / questo`. Misurato con `lightRefundDiv: 4`:
+
+| secondo lucchetto | campagna completata |
+|---|---|
+| spento (adesso) | ~70% |
+| mano sotto onda/1 | 63% |
+| mano sotto onda/1.5 | 40% |
+| mano sotto onda/2 | 33% |
 
 Il pulsante della luce si accende (bollino `+1` dorato, classe `charged`)
 quando il rimborso e' armato: senza, sarebbe una regola invisibile.

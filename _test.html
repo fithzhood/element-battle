@@ -541,9 +541,10 @@ async function run(){
 
   /* --------------------------------------------------------- la luce */
   head('La luce rende solo quando un tipo e- agli sgoccioli');
-  setup(g,{wave:40, el:'fire', attacks:{fire:20,water:20,nature:20,light:5,darkness:5}});
-  check('la soglia e- BAL.lightRefundMax', g.lightSoglia()===D.BAL.lightRefundMax, g.lightSoglia());
-  check('tutti riforniti: luce scarica', g.lightArmata()===false,
+  setup(g,{wave:40, el:'fire', attacks:{fire:20,water:20,nature:20,light:5,darkness:12}});
+  check('la soglia e- onda / lightRefundDiv',
+        g.lightSoglia()===Math.floor(40/D.BAL.lightRefundDiv), g.lightSoglia());
+  check('tutti riforniti per l-onda in cui si e-: luce scarica', g.lightArmata()===false,
         'piu- scarso: '+g.lightBersaglio()+' a '+g.attacks[g.lightBersaglio()]+', soglia '+g.lightSoglia());
 
   const ricca = g.totalAttacks();
@@ -579,6 +580,13 @@ async function run(){
   check('il pulsante della luce dice che e- carico',
         DOC.querySelector('.atk.light').classList.contains('charged') &&
         !!DOC.querySelector('.atk.light .atk-mark'));
+  /* stessa scorta, onda diversa: a onda 8 e- abbondanza, a onda 60 e- fame */
+  setup(g,{wave:8, el:'fire', attacks:{fire:5,water:5,nature:5,light:5,darkness:5}});
+  const scarica8 = g.lightArmata();
+  setup(g,{wave:60, el:'fire', attacks:{fire:5,water:5,nature:5,light:5,darkness:5}});
+  check('la stessa scorta e- ricca a onda 8 e misera a onda 60',
+        scarica8===false && g.lightArmata()===true, 'onda 8: '+scarica8+', onda 60: '+g.lightArmata());
+
   setup(g,{wave:2, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
   g.renderAttacks();
   check('e quando e- scarico non lo dice',

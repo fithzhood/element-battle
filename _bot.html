@@ -287,10 +287,15 @@ async function main(){
        ma il bot raccoglie soltanto spade oppure soltanto scudi */
     ['M · misto, come adesso',             smart, true, D2],
     /* quanto deve essere magro il tipo piu' scarso perche' la luce lo rifornisca */
-    ['L1 · luce se un tipo sotto 1',       smart, true, Object.assign({lightRefundMax:1}, D2)],
-    ['L2 · luce se un tipo sotto 2',       smart, true, Object.assign({lightRefundMax:2}, D2)],
-    ['L3 · luce se un tipo sotto 3',       smart, true, Object.assign({lightRefundMax:3}, D2)],
-    ['L5 · luce se un tipo sotto 5',       smart, true, Object.assign({lightRefundMax:5}, D2)],
+    ['L2 · un tipo sotto onda/2',          smart, true, Object.assign({lightRefundDiv:2}, D2)],
+    ['L3 · un tipo sotto onda/3',          smart, true, Object.assign({lightRefundDiv:3}, D2)],
+    ['L4 · un tipo sotto onda/4',          smart, true, Object.assign({lightRefundDiv:4}, D2)],
+    ['L6 · un tipo sotto onda/6',          smart, true, Object.assign({lightRefundDiv:6}, D2)],
+    ['L8 · un tipo sotto onda/8',          smart, true, Object.assign({lightRefundDiv:8}, D2)],
+    /* i due lucchetti insieme: tipo scarso E mano intera sotto soglia */
+    ['LT1 · onda/4 + mano sotto onda/1',   smart, true, Object.assign({lightRefundDiv:4, lightRefundTotal:1}, D2)],
+    ['LT15 · onda/4 + mano sotto onda/1.5',smart, true, Object.assign({lightRefundDiv:4, lightRefundTotal:1.5}, D2)],
+    ['LT2 · onda/4 + mano sotto onda/2',   smart, true, Object.assign({lightRefundDiv:4, lightRefundTotal:2}, D2)],
     ['B · misto, prende sempre la calma',  smart, true, D2, null, true],
     ['B1 · calma sempre, boss paga 1',     smart, true, Object.assign({nerfedPicks:1}, D2), null, true],
     ['B3 · calma sempre, boss paga 3',     smart, true, Object.assign({nerfedPicks:3}, D2), null, true],
