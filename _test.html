@@ -111,8 +111,19 @@ async function makeZip(entries, method){
 const GIF1PX = new Uint8Array([0x47,0x49,0x46,0x38,0x39,0x61,1,0,1,0,0x80,0,0,0,0,0,0xff,0xff,0xff,
   0x21,0xf9,4,1,0,0,0,0x2c,0,0,0,0,1,0,1,0,0,2,2,0x44,1,0,0x3b]);
 
+const CLEAR = new URLSearchParams(location.search).get('target') === 'clear';
+
+function frameClear(query){
+  return new Promise(res=>{
+    const f=document.createElement('iframe');
+    f.src='element-clear.html?'+query;
+    f.onload=()=>setTimeout(()=>res(f), 80);
+    document.body.appendChild(f);
+  });
+}
+
 async function run(){
-  const f = await frame('auto&debug&fast');
+  const f = await (CLEAR ? frameClear('auto&debug&fast') : frame('auto&debug&fast'));
   DOC = f.contentDocument;
   const W = f.contentWindow, D = W.ElementData, g = W.__el;
 
@@ -295,6 +306,17 @@ async function run(){
   check('in modalita infinita il finale non torna', g.phase==='fight' && g.wave===201, g.phase+'/'+g.wave);
 
   /* -------------------------------------------------- uovo di pasqua */
+  if (CLEAR) {
+    head('Versione clear: dell-uovo non deve restare niente');
+    check('nessun metodo per chiedere lo zip', typeof g.askZip === 'undefined');
+    check('nessun metodo per caricarlo',       typeof g.loadZip === 'undefined');
+    check('nessuna pressione lunga collegata', typeof g.bindEasterEgg === 'undefined');
+    const srcC = await fetch('element-clear.js').then(r=>r.text());
+    ['DecompressionStream','gifsFromZip','askZip','bindEasterEgg','}, 3000)'].forEach(t=>
+      check('nel sorgente non compare ' + t, srcC.indexOf(t) < 0));
+    check('la modalita GIF resta spenta', g.gifMode === false);
+    check('il pulsante Art resta nascosto', DOC.getElementById('btn-change').hidden === true);
+  } else {
   head('Easter egg: archivio ZIP di GIF');
   check('lo stemma dell-elemento e il bersaglio', !!DOC.getElementById('badge'));
   const src = await fetch('element.js').then(r=>r.text());
@@ -336,6 +358,7 @@ async function run(){
   const gifsBefore = g.gifs.length;
   await g.loadZip(new File([emptyZip],'e.zip'));
   check('zip senza GIF: niente si rompe', g.gifs.length===gifsBefore && g.gifMode===false);
+  }
 
   /* ------------------------------------------------------ artefatti */
   head('Artefatti');

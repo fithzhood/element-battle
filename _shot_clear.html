@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>shot clear</title>
+<style>html,body{margin:0;padding:0;background:#07080e;overflow:hidden}
+iframe{border:0;display:block;position:absolute;left:0;top:0}</style></head>
+<body><script>
+const q=new URLSearchParams(location.search);
+const w=+(q.get('w')||384), h=+(q.get('h')||800);
+const f=document.createElement('iframe');
+f.width=w; f.height=h; f.style.width=w+'px'; f.style.height=h+'px';
+f.src='element-clear.html?'+(q.get('q')||'auto&debug');
+document.body.appendChild(f);
+</script></body></html>

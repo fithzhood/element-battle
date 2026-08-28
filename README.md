@@ -4,6 +4,7 @@ Un mostro alla volta. Cinque elementi in mano, contati: ogni colpo che tiri è u
 colpo in meno. Quando finiscono, finisce la partita.
 
 **Gioca:** https://fithzhood.github.io/element-battle/element.html
+**Versione clear** (senza easter egg): https://fithzhood.github.io/element-battle/element-clear.html
 
 ## Come funziona
 
@@ -18,6 +19,19 @@ colpo in meno. Quando finiscono, finisce la partita.
   delle quattro sfide, e paga in **artefatti**: armi (+danno) e scudi (attacchi
   che ricrescono a ogni combattimento).
 - Onda 91, l'ultimo boss: finisce la campagna. Poi si può proseguire all'infinito.
+
+## Le due versioni
+
+`element.html` e' il gioco completo. `element-clear.html` e' lo stesso gioco
+**senza l'easter egg**: non e' una copia a mano, si rigenera con
+`python costruisci-clear.py`, che ritaglia da `element.js` le funzioni che
+realizzano il segreto e controlla che nel file prodotto non ne resti traccia.
+Le due versioni condividono `element.css`, `element-data.js` e `img/`, quindi
+ogni modifica al gioco vale per entrambe: va solo rilanciato lo script.
+
+Il banco di prova gira su tutte e due: `_test.html` per quella completa,
+`_test.html?target=clear` per l'altra, che al posto delle prove sull'uovo
+verifica che non ne sia rimasto niente.
 
 ## Easter egg
 
@@ -39,7 +53,9 @@ funziona anche offline dentro l'APK.
 | `element-data.js` | tabelle: danni, mostri, quest, boss, artefatti, manopole del bilanciamento |
 | `element.js` | motore, effetti, salvataggi, lettura zip |
 | `img/` | illustrazioni ridotte in WebP (le originali 2048² stanno in OneDrive) |
-| `_test.html` | banco di prova: 81 verifiche su boss, quest, easter egg, salvataggi |
+| `element-clear.html` / `element-clear.js` | versione senza easter egg, generata |
+| `costruisci-clear.py` | la genera e verifica che l'uovo sia sparito |
+| `_test.html` | banco di prova: 81 verifiche, `?target=clear` per l'altra versione |
 | `_bot.html` | bot che gioca da solo e misura il bilanciamento |
 | `_shot.html` | ponte per gli screenshot a misura di telefono |
 
