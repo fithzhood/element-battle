@@ -74,6 +74,20 @@ f.onload = () => setTimeout(async () => {
                               }
                             }
                             c.click(); await pausa(700); }
+  /* mano magra: la luce e' carica e il pulsante lo dice */
+  if (cmd === 'carica')   { g.wave = +(q.get('wave') || 30); g.nextElement = arg2El(q.get('el'));
+                            g.createEnemy();
+                            g.attacks = {fire:2,water:1,nature:3,light:2,darkness:0};
+                            g.renderAll(); }
+  if (cmd === 'help')     { g.wave = +(q.get('wave') || 24); g.nextElement = arg2El(q.get('el'));
+                            g.attacks = {fire:3,water:2,nature:4,light:3,darkness:1};
+                            g.createEnemy(); g.renderAttacks(); g.showHelp(); }
+  /* la collezione visibile mentre si sceglie l'artefatto */
+  if (cmd === 'owned')    { g.wave = +(q.get('wave') || 31); g.nextElement = arg2El(q.get('el'));
+                            const D2 = f.contentWindow.ElementData;
+                            ['w1f','s1w','w2dl','s2fl','s1n'].forEach(id => g.artifacts.push(D2.ARTIFACT_BY_ID[id]));
+                            g.attacks = {fire:60,water:9,nature:9,light:9,darkness:9};
+                            g.createEnemy(); g.enemy.hp = 0; g.victory(); await passaResoconto(); }
   if (cmd === 'nerfed')   { g.skipChallenge = true; g.wave = +(q.get('wave') || 21);
                             g.nextElement = arg2El(q.get('el')); g.createEnemy();
                             g.enemy.hp = 0; g.victory(); await passaResoconto(); }

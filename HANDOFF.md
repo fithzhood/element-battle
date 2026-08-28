@@ -1,6 +1,6 @@
 # Element Battle — punto della situazione
 
-Ultimo aggiornamento: **28 agosto 2026**. Leggi questo prima di toccare il gioco.
+Ultimo aggiornamento: **28 agosto 2026** (sera: colonna sonora vera). Leggi questo prima di toccare il gioco.
 
 ---
 
@@ -53,14 +53,16 @@ python costruisci-clear.py                   # rigenera i tre element-clear.*
 Collaudo, con Chrome headless (`--dump-dom` e si leggono i PASS/FAIL):
 
 ```
-http://localhost:8158/_test.html                 115 verifiche, versione completa
-http://localhost:8158/_test.html?target=clear    120 verifiche, versione clear
+http://localhost:8158/_test.html                 119 verifiche, versione completa
+http://localhost:8158/_test.html?target=clear    124 verifiche, versione clear
 http://localhost:8158/_bot.html?runs=100&variant=W   solo spade (S: scudi, M: misto,
                                                      B*: prende sempre la calma del saggio)
 http://localhost:8158/_bot.html?runs=100          bot che gioca e misura il bilanciamento
 http://localhost:8158/_shot.html?w=384&h=800&...  screenshot a misura di telefono
    ...&drive=report|mystery|nerfed|artshow        le schermate nuove
-http://localhost:8158/_musica.html?scena=boss&posta=x.wav   rende la musica su file
+http://localhost:8158/_musica.html                collauda i due brani: che il
+   browser decodifichi l'Opus, che la durata torni esatta, che la giunta
+   del loop non scatti. Va aperto in un browser VERO (vedi trappole).
    ...&freeze=1400                                congela le animazioni a un istante
 ```
 
@@ -69,7 +71,9 @@ http://localhost:8158/_musica.html?scena=boss&posta=x.wav   rende la musica su f
 le due versioni divergono.
 
 Deploy: copia in `WebApps\<repo>`, `git push`, e **incrementa `?v=N`** sui
-riferimenti a css e js dentro l'html (adesso `v=4`).
+riferimenti a css e js dentro l'html (adesso `v=10`). La stessa marca finisce
+da sola sugli URL dei brani: `element.js` la legge dal proprio tag `<script>`
+(`const VER`), quindi **non va aggiornata a mano in due posti**.
 
 ---
 
@@ -104,15 +108,27 @@ riferimenti a css e js dentro l'html (adesso `v=4`).
   misterioso, un pannello dice cosa era rispetto ai pacchetti che si vedevano
   (`Empty hands` / `Thin` / `Fair` / `Rich` / `Double pack`) ed elenca gli
   attacchi presi. Prima era un bollino da 750 ms sulla carta.
-- **musica** (`Music` in `element.js`): sottofondo sintetizzato, nessun file.
-  Tappeto grave + arpeggio rado + basso, su pentatonica minore (non puo'
-  stonare con se stessa); la tonica segue l'elemento del mostro. Sui boss
-  70 → 104 bpm, basso su ogni tempo, eco a meta' tempo. Pulsante suo nella
-  barra in alto, separato dagli effetti. Livelli: picco −17/−14 dBFS.
+- **musica** (`Music` in `element.js`): **due brani veri**, generati con Suno
+  il 28 ago e chiusi su se stessi con ffmpeg. `musica/tema.ogg` (52,020 s,
+  533 KB) sulle onde normali, `musica/boss.ogg` (84,000 s, 808 KB) sui boss:
+  **1,31 MB in tutto**. Stessa tonalita' (Re minore) e stesso livello
+  (−18,0 LUFS), cosi' il passaggio e' una **dissolvenza incrociata a potenza
+  costante** invece di un cambio di tempo. Il boss si scarica solo quando
+  serve. Pulsante suo nella barra in alto, separato dagli effetti; si ferma
+  col telefono in tasca e sul game over. Il sintetizzatore di prima e' in
+  `_musica_vecchia.js.bak`, se un giorno servisse rileggerlo.
 - **l'artefatto raccolto si vede in grande** (`showArtifactCard`): 272 px,
   nome, descrizione e famiglia. Le illustrazioni sono 320² e nello scaffale si
   vedono da 46: era l'unico modo di guardarle davvero. Vale anche per le
   benedizioni, che nello scaffale non ci finiscono nemmeno.
+- **prontuario degli attacchi**: pulsante `?` nella barra in alto → tabella dei
+  cinque attacchi contro il mostro in scena, piu' le quattro regole che prima
+  si potevano solo dedurre (la ruota, la luce, il buio, e che gli attacchi sono
+  l'orologio). Le righe le costruisce `legendRow`, la stessa della legenda delle
+  ricompense: cosi' le due non possono raccontare cose diverse.
+- **la collezione resta sotto gli occhi** mentre si sceglie l'artefatto del
+  boss (`renderOwned`): senza, per sapere se un doppione conviene bisognava
+  ricordarselo.
 - **easter egg**: pressione lunga 3 secondi sullo stemma dell'elemento → zip di
   GIF → i mostri diventano quelle, premio a pieno schermo lungo quanto i PV.
   Solo nella versione completa.
@@ -134,11 +150,32 @@ senza motivo apparente. Adesso `setup()` azzera anche `skipChallenge`;
 Quando una verifica fallisce a intermittenza, il primo sospetto e' uno stato
 lasciato indietro, non il caso.
 
-**Il render della musica non finisce in headless.** `_musica.html` rende il
-sottofondo su un `OfflineAudioContext` e lo spedisce a un ricevitore locale
-(`ricevi.py` sulla 8159, perche' due MB di base64 non passano dal ponte
-JavaScript). Con `--virtual-time-budget` la pagina resta su RENDERING per
-sempre: il tempo finto non muove il thread audio. Va aperta nel browser vero.
+**L'audio non si collauda in headless col tempo finto.** Con
+`--virtual-time-budget` il thread audio non si muove: un `OfflineAudioContext`
+resta a renderizzare per sempre e le rampe di guadagno non avanzano di un
+millesimo. `_musica.html` va aperto in un **browser vero** (`preview_start`), e
+lo stesso vale per qualunque verifica sulla dissolvenza. Le prove sui *file*
+(durata, livello, giunta) si fanno invece fuori dal browser, con
+`audio/verifica-loop.py`, che non ha questo problema.
+
+**L'AAC riapre la giunta del loop.** Misurato: un m4a restituisce **512
+campioni piu'** di quelli che gli sono entrati (riempimento in testa
+dell'encoder). Sono 11 ms, e bastano a far sentire lo scatto a ogni giro.
+Opus e Vorbis rendono la lunghezza esatta al campione. I brani del gioco sono
+**Ogg Opus** per questo, non per la dimensione.
+
+**`cancelScheduledValues` non ferma una rampa gia' partita**, toglie solo gli
+appuntamenti futuri. Per interrompere una dissolvenza a meta' serve
+`cancelAndHoldAtTime`. E una voce che sta sfumando **non va tolta subito** dal
+registro: se la scena torna indietro (boss → normale → boss in fretta), senza
+quella voce `accendi` ne accendeva una seconda sovrapposta alla prima. Adesso
+resta li' con un appuntamento di chiusura che `accendi` sa disdire.
+
+**Due rampe lineari incrociate fanno un buco.** I due brani sono materiale
+scorrelato: si sommano in **potenza**, non in ampiezza, quindi a meta'
+dissolvenza la somma cala di 3 dB. Le rampe seguono una curva a seno (la
+stessa che ffmpeg chiama `qsin`), cosi' sin² + cos² = 1 e il livello non si
+muove — verificato in Chrome, potenza 1,000 a ogni istante del passaggio.
 
 **I pannelli che aspettano un tocco.** Il resoconto dell'onda e il pacchetto
 misterioso si fermano finche' non si tocca il pulsante. Con `?fast` no: il
@@ -221,6 +258,33 @@ chi sa giocare.
 Se un giorno si vuole restringere di nuovo senza togliere luce e buio dalla
 mano, le leve: **1 a testa**, oppure rendere la luce meno gratuita (il rimborso
 non a colpo sicuro).
+
+**0-quater. La luce non e' piu' un motore (28 ago 2026, sera).** Rendeva un
+attacco **a caso** a ogni colpo, sempre: chi partiva bene non si fermava piu'.
+Adesso rende solo se la mano e' sotto **onda / `BAL.lightRefundDiv`** attacchi
+in tutto, e rende il tipo di cui si e' **piu' poveri** (a parita', il primo
+nell'ordine degli elementi: deve essere prevedibile). Da fonte inesauribile a
+rete di sicurezza — per riaccenderla bisogna essersi svuotati la mano.
+
+Misurato, 100 partite col gioco forte:
+
+| soglia | campagna completata | mediana |
+|---|---|---|
+| sempre (com'era) | 73% | 91 |
+| sotto onda/1 | 61% | 91 |
+| sotto onda/1.5 | 40% | 17 |
+| **sotto onda/2 (adesso)** | **23%** | 12 |
+| sotto onda/3 | 13% | 12 |
+
+Il pulsante della luce si accende (bollino `+1` dorato, classe `charged`)
+quando il rimborso e' armato: senza, sarebbe una regola invisibile.
+
+**TRAPPOLA, la seconda della stessa famiglia.** `_bot.html` ha un **modello di
+costo** che diceva `cost('light') = 0.02` — "spendi 1, ne torna 1". Dopo la
+modifica quel modello era falso: il bot spendeva luce aspettando rimborsi che
+non arrivavano, e ha misurato **5%** invece del 23% vero. Il modello di costo
+del bot fa parte del bilanciamento quanto le manopole: **se cambi una regola,
+guarda se il banco la conosce.**
 
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21

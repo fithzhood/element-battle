@@ -539,6 +539,74 @@ async function run(){
                   DOC.querySelector('#mystery-chips .rep-none').textContent==='no attacks gained';
         })());
 
+  /* --------------------------------------------------------- la luce */
+  head('La luce rende solo quando la mano e- magra');
+  setup(g,{wave:40, el:'fire', attacks:{fire:20,water:20,nature:20,light:5,darkness:5}});
+  check('la soglia e- onda / lightRefundDiv',
+        g.lightSoglia()===Math.floor(40/D.BAL.lightRefundDiv), g.lightSoglia());
+  check('mano ricca: luce scarica', g.lightArmata()===false,
+        g.totalAttacks()+' attacchi, soglia '+g.lightSoglia());
+  const ricca = g.totalAttacks();
+  await g.attack('light');
+  check('e infatti non rende niente', g.totalAttacks()===ricca-1, ricca+' -> '+g.totalAttacks());
+
+  setup(g,{wave:40, el:'fire', attacks:{fire:5,water:2,nature:9,light:3,darkness:0}});
+  check('mano magra: luce carica', g.lightArmata()===true,
+        g.totalAttacks()+' attacchi, soglia '+g.lightSoglia());
+  check('il bersaglio e- il tipo di cui si ha meno', g.lightBersaglio()==='darkness', g.lightBersaglio());
+  const buioPrima = g.attacks.darkness, magra = g.totalAttacks();
+  await g.attack('light');
+  check('rende un attacco di quel tipo, e il totale non cala',
+        g.attacks.darkness===buioPrima+1 && g.totalAttacks()===magra,
+        'buio '+buioPrima+' -> '+g.attacks.darkness+', totale '+magra+' -> '+g.totalAttacks());
+
+  setup(g,{wave:40, el:'fire', attacks:{fire:0,water:0,nature:5,light:3,darkness:5}});
+  check('a parita- vince il primo nell-ordine degli elementi, non il caso',
+        g.lightBersaglio()===D.ELEMENTS[0], g.lightBersaglio());
+
+  setup(g,{wave:40, el:'fire', attacks:{fire:1,water:1,nature:1,light:3,darkness:1}});
+  g.renderAttacks();
+  check('il pulsante della luce dice che e- carico',
+        DOC.querySelector('.atk.light').classList.contains('charged') &&
+        !!DOC.querySelector('.atk.light .atk-mark'));
+  setup(g,{wave:2, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.renderAttacks();
+  check('e quando e- scarico non lo dice',
+        !DOC.querySelector('.atk.light').classList.contains('charged') &&
+        !DOC.querySelector('.atk.light .atk-mark'));
+
+  /* --------------------------------------------------- prontuario */
+  head('Prontuario degli attacchi');
+  setup(g,{wave:12, el:'nature', attacks:{fire:5,water:5,nature:5,light:5,darkness:5}});
+  g.showHelp();
+  check('una riga per elemento', DOC.querySelectorAll('#help-rows .leg-row').length===5,
+        DOC.querySelectorAll('#help-rows .leg-row').length);
+  const testoHelp = DOC.getElementById('help-rows').textContent;
+  check('dice cosa fa il buio', /14 if chained/.test(testoHelp), testoHelp);
+  check('e la regola della luce, con la soglia di adesso',
+        testoHelp.indexOf('under '+g.lightSoglia()) >= 0 || /ready/.test(testoHelp), testoHelp);
+  check('il danno mostrato e- quello contro chi e- in scena',
+        DOC.querySelector('#help-rows .leg-row.fire .leg-dmg').textContent===String(g.damageOf('fire')),
+        DOC.querySelector('#help-rows .leg-row.fire .leg-dmg').textContent+' / '+g.damageOf('fire'));
+  DOC.getElementById('btn-help-go').click();
+  check('e si chiude', DOC.getElementById('help').hidden===true);
+
+  /* ------------------------------------- la collezione mentre si sceglie */
+  head('La collezione resta sotto gli occhi');
+  setup(g,{wave:11, el:'fire', attacks:{fire:40},
+           artifacts:[D.ARTIFACT_BY_ID['s1w'], D.ARTIFACT_BY_ID['w1f']]});
+  await killWith(g,'fire');
+  check('scegliendo l-artefatto si vede quello che si ha gia-',
+        DOC.getElementById('reward-owned').hidden===false &&
+        DOC.querySelectorAll('#reward-owned .owned-item').length===2,
+        DOC.querySelectorAll('#reward-owned .owned-item').length);
+  DOC.querySelectorAll('#reward-inner .artifact-card')[0].click();
+  await nextTick(); await nextTick();
+  setup(g,{wave:12, el:'fire', attacks:{fire:40},
+           artifacts:[D.ARTIFACT_BY_ID['s1w'], D.ARTIFACT_BY_ID['w1f']]});
+  await killWith(g,'fire');
+  check('ma sulla schermata del bottino no', DOC.getElementById('reward-owned').hidden===true);
+
   /* ------------------------------------------- benedizioni e boss disarmato */
   head('Benedizioni');
   const prosperita = D.ARTIFACT_BY_ID['b1'];

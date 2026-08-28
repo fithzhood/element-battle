@@ -42,9 +42,14 @@ const tick = () => new Promise(r=>setTimeout(r,0));
 
 /* ------------------------------------------------------------ politiche */
 
-/* costo netto in attacchi di un colpo */
+/* Costo netto in attacchi di un colpo.
+   La luce vale zero SOLO quando e' carica: dal 28 ago 2026 rende un attacco
+   soltanto se la mano e' sotto onda/2. Se il banco non lo sa, il bot spende
+   luce aspettando un rimborso che non arriva e misura un gioco piu' brutto di
+   quello vero (successo: 5% invece del 30%). Il modello di costo del bot fa
+   parte del bilanciamento quanto le manopole. */
 function cost(e){
-  if (e === 'light') return 0.02;                       /* spendi 1, ne guadagni 1 */
+  if (e === 'light') return (g.lightArmata && g.lightArmata()) ? 0.02 : 1;
   if (e === 'darkness')
     return D.ELEMENTS.some(x => x !== 'darkness' && g.attacks[x] > 0) ? 2 : 1;
   return 1;
@@ -281,6 +286,10 @@ async function main(){
     /* quanto vale una famiglia sola di artefatti: stesso gioco, stessa politica,
        ma il bot raccoglie soltanto spade oppure soltanto scudi */
     ['M · misto, come adesso',             smart, true, D2],
+    /* quanto deve essere facile riaccendere la luce: soglia = onda / div */
+    ['L1 · luce sotto onda/1',             smart, true, Object.assign({lightRefundDiv:1}, D2)],
+    ['L15 · luce sotto onda/1.5',          smart, true, Object.assign({lightRefundDiv:1.5}, D2)],
+    ['L3 · luce sotto onda/3',             smart, true, Object.assign({lightRefundDiv:3}, D2)],
     ['B · misto, prende sempre la calma',  smart, true, D2, null, true],
     ['B1 · calma sempre, boss paga 1',     smart, true, Object.assign({nerfedPicks:1}, D2), null, true],
     ['B3 · calma sempre, boss paga 3',     smart, true, Object.assign({nerfedPicks:3}, D2), null, true],
