@@ -53,9 +53,10 @@ python costruisci-clear.py                   # rigenera i tre element-clear.*
 Collaudo, con Chrome headless (`--dump-dom` e si leggono i PASS/FAIL):
 
 ```
-http://localhost:8158/_test.html                 101 verifiche, versione completa
-http://localhost:8158/_test.html?target=clear    106 verifiche, versione clear
-http://localhost:8158/_bot.html?runs=100&variant=W   solo spade (S: solo scudi, M: misto)
+http://localhost:8158/_test.html                 115 verifiche, versione completa
+http://localhost:8158/_test.html?target=clear    120 verifiche, versione clear
+http://localhost:8158/_bot.html?runs=100&variant=W   solo spade (S: scudi, M: misto,
+                                                     B*: prende sempre la calma del saggio)
 http://localhost:8158/_bot.html?runs=100          bot che gioca e misura il bilanciamento
 http://localhost:8158/_shot.html?w=384&h=800&...  screenshot a misura di telefono
    ...&drive=report|mystery                       le due schermate nuove
@@ -116,6 +117,13 @@ solo meccanismo non basta — restavano `gifMode`, `#gif-slot` e un'intestazione
 che lo annunciava. `costruisci-clear.py` si rifiuta di scrivere se trova una
 parola proibita. **`JSON.stringify` contiene "gif"** e fa scattare falsi allarmi.
 
+**Le prove si sporcano fra loro.** La calma del saggio raccolta in una prova
+disarmava il boss della prova dopo, e il banco falliva una volta su quattro
+senza motivo apparente. Adesso `setup()` azzera anche `skipChallenge`;
+`setupRaw()` no, perche' e' proprio quello che serve alla prova del saggio.
+Quando una verifica fallisce a intermittenza, il primo sospetto e' uno stato
+lasciato indietro, non il caso.
+
 **I pannelli che aspettano un tocco.** Il resoconto dell'onda e il pacchetto
 misterioso si fermano finche' non si tocca il pulsante. Con `?fast` no: il
 pannello viene **costruito ma non mostrato**, e il gioco tira dritto. Senza
@@ -159,6 +167,25 @@ gioco misto passa dal 33% al 37%.
 mano, e dopo il cambio misurava un gioco che non esisteva piu' (spade al 3%
 invece che al 34%). Adesso `BASE` si prende a caldo da `D.BAL` dopo il boot.
 Le varianti `M`/`S`/`W` del bot servono proprio a questo confronto.
+
+**0-bis. Benedizioni e sfide dei boss (28 ago 2026, sera).** La prosperita'
+ancestrale paga **4 per tipo** invece di 3 (`BAL.blessingGrant`), le sfide dei
+boss mordono di piu' (`chConvert` 3→5, `chReflect` 8→5, e la corazza elementale
+toglie `chArmor` = 1 danno **a ogni colpo**, non solo al super), e un boss che
+arriva **senza sfida** paga `BAL.nerfedPicks` = 3 artefatti su un'offerta di 6
+carte invece di 1 su 4.
+
+Cosa dicono i numeri, onestamente:
+- le sfide piu' cattive si sentono: campagna completata **37% → 30%**;
+- il pagamento maggiorato del boss disarmato **non sposta la percentuale**. Un
+  bot che prende sempre la calma del saggio chiude il 27% sia col vecchio
+  pagamento (1 artefatto) sia col nuovo (3). Il motivo e' la struttura a due
+  gobbe: **la partita si decide all'onda 21**, e quello che il boss paga dopo
+  arriva quando il verdetto c'e' gia'. Resta perche' e' vistoso e non
+  sbilancia niente, non perche' abbia raddrizzato la carta.
+- Se un giorno si vuole che la calma del saggio conti davvero, la leva non e'
+  quanto paga il boss dopo: e' **non far pagare la scelta** (la si prende
+  *oltre* all'artefatto, non al posto suo). Da misurare.
 
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21

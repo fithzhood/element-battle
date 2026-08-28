@@ -21,6 +21,7 @@ const RUNS  = +(q.get('runs')  || 120);
 const CAP   = +(q.get('cap')   || 4000);   /* tetto di azioni per partita */
 
 let f, W, D, g, DOC;
+let CALMA_SEMPRE = false;   /* variante B: il bot prende sempre la calma del saggio */
 
 function boot(){
   return new Promise(res=>{
@@ -161,7 +162,10 @@ function artifactValue(a){
   if (a.slot === 'shield')   return 60 + Object.keys(a.regen).reduce((s,e) => s + a.regen[e], 0) * 20;
   if (a.slot === 'weapon')   return 30 + Object.keys(a.bonus).reduce((s,e) => s + a.bonus[e], 0) * 6
                                     + (D.BAL.weaponGrant || 0) * 5;
-  if (a.grant)               return 34;
+  /* la prosperita' vale quello che regala; la calma del saggio la si stima
+     poco, ma la variante B la fa preferire sempre, per misurare se conviene */
+  if (a.grant)               return a.grant * D.ELEMENTS.length * 2.5;
+  if (a.skipChallenge)       return CALMA_SEMPRE ? 999 : 8;
   return 8;
 }
 function chooseArtifact(smartMode, soloSlot){
@@ -239,9 +243,10 @@ function histogram(list){
     '#'.repeat(Math.round(buckets[k]/maxc*44)) + ' ' + buckets[k]).trimEnd()).join('\n');
 }
 
-async function campaign(label, policy, smartMode, bal, soloSlot){
+async function campaign(label, policy, smartMode, bal, soloSlot, calmaSempre){
   Object.assign(D.BAL, bal);
   if (D.applyBal) D.applyBal();
+  CALMA_SEMPRE = !!calmaSempre;
   const waves = [], wins = [], arts = [];
   for (let i = 0; i < RUNS; i++) {
     const r = await playOne(policy, smartMode, soloSlot);
@@ -276,6 +281,11 @@ async function main(){
     /* quanto vale una famiglia sola di artefatti: stesso gioco, stessa politica,
        ma il bot raccoglie soltanto spade oppure soltanto scudi */
     ['M · misto, come adesso',             smart, true, D2],
+    ['B · misto, prende sempre la calma',  smart, true, D2, null, true],
+    ['B1 · calma sempre, boss paga 1',     smart, true, Object.assign({nerfedPicks:1}, D2), null, true],
+    ['B3 · calma sempre, boss paga 3',     smart, true, Object.assign({nerfedPicks:3}, D2), null, true],
+    ['B4 · calma sempre, boss paga 4',     smart, true, Object.assign({nerfedPicks:4}, D2), null, true],
+    ['N · sfide come prima del 28 ago',    smart, true, Object.assign({chConvert:3, chReflect:8, chArmor:0}, D2)],
     ['S · solo scudi',                     smart, true, D2, 'shield'],
     ['W · solo spade',                     smart, true, D2, 'weapon'],
     /* proposte per rimettere in gioco le spade, misurate a spade sole */
@@ -301,7 +311,7 @@ async function main(){
   for (const v of list) {
     if (only && v[0].indexOf(only + ' ') !== 0) continue;
     Object.assign(D.BAL, JSON.parse(JSON.stringify(BASE)));
-    await campaign(v[0], v[1], v[2], v[3], v[4]);
+    await campaign(v[0], v[1], v[2], v[3], v[4], v[5]);
   }
   P.textContent = 'DONE';
   document.title = 'DONE';

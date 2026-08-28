@@ -38,6 +38,9 @@ function setup(g, opt){
   g.busy = false;
   g.phase = 'fight';
   g.endless = false;
+  /* la calma del saggio raccolta in una prova disarmava il boss di quella dopo:
+     setup() riparte pulito, setupRaw() no, perche' li' serve tenerla */
+  g.skipChallenge = false;
   g.artifacts = opt.artifacts || [];
   g.wave = opt.wave;
   g.nextElement = opt.el;
@@ -163,17 +166,18 @@ async function run(){
                            if(g.challenge) seen[g.challenge.type]=1; }
   check('escono tutte e quattro le sfide', Object.keys(seen).length===4, Object.keys(seen).join(','));
 
-  head('Boss 1/4 — Elemental Armor: annulla la super efficacia');
+  head('Boss 1/4 — Elemental Armor: annulla la super efficacia e smorza');
+  const corazza = D.BAL.chArmor;
   setup(g,{wave:11, el:'nature', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
   g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
-  check('fuoco vs natura: 8 -> 4', g.damageOf('fire')===4, g.damageOf('fire'));
-  check('natura vs natura resta 4', g.damageOf('nature')===4, g.damageOf('nature'));
+  check('fuoco vs natura: niente raddoppio', g.damageOf('fire')===4-corazza, g.damageOf('fire'));
+  check('e la corazza smorza anche i colpi normali', g.damageOf('nature')===4-corazza, g.damageOf('nature'));
   setup(g,{wave:11, el:'darkness'});
   g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
-  check('luce vs buio: 8 -> 3', g.damageOf('light')===3, g.damageOf('light'));
+  check('luce vs buio: da 8 a base', g.damageOf('light')===3-corazza, g.damageOf('light'));
   setup(g,{wave:11, el:'light'});
   g.challenge = {type:'noEffectiveDamage', title:'x', desc:'x', reflected:0};
-  check('buio vs luce: 10 -> 7', g.damageOf('darkness')===7, g.damageOf('darkness'));
+  check('buio vs luce: da 10 a base', g.damageOf('darkness')===7-corazza, g.damageOf('darkness'));
   g.renderAttacks();
   check('il pulsante non e piu marcato super', !DOC.querySelector('.atk.darkness').classList.contains('super'));
 
@@ -191,10 +195,13 @@ async function run(){
   check('boss buio: scelto il danno minimo', D.baseDamage(g.resistedBy('darkness'),'darkness',false,false)===4, g.resistedBy('darkness'));
   setup(g,{wave:11, el:'fire', attacks:{fire:8,water:2}});
   g.challenge={type:'conversionAura',title:'x',desc:'x',reflected:0}; g.applyChallengeEntry();
-  check('3 fuoco diventano 3 natura', g.attacks.fire===5 && g.attacks.nature===3, g.attacks.fire+'/'+g.attacks.nature);
+  const convertiti = Math.min(8, D.BAL.chConvert);
+  check('gli attacchi piu- abbondanti diventano del tipo resistito',
+        g.attacks.fire===8-convertiti && g.attacks.nature===convertiti,
+        g.attacks.fire+'/'+g.attacks.nature+' (chConvert='+D.BAL.chConvert+')');
   check('il totale non cambia', g.totalAttacks()===10, g.totalAttacks());
 
-  head('Boss 4/4 — Reflective Aura: ogni 8 danni perdi un attacco');
+  head('Boss 4/4 — Reflective Aura: ogni tot danni perdi un attacco');
   setup(g,{wave:11, el:'nature', attacks:{fire:6,water:6,nature:6}});
   g.challenge={type:'reflectiveAura',title:'x',desc:'x',reflected:0};
   const before = g.totalAttacks();
@@ -531,6 +538,64 @@ async function run(){
            return DOC.getElementById('mystery-name').textContent==='Empty hands' &&
                   DOC.querySelector('#mystery-chips .rep-none').textContent==='no attacks gained';
         })());
+
+  /* ------------------------------------------- benedizioni e boss disarmato */
+  head('Benedizioni');
+  const prosperita = D.ARTIFACT_BY_ID['b1'];
+  check('la prosperita- da- quanto dice BAL', prosperita.grant===D.BAL.blessingGrant, prosperita.grant);
+  check('e la descrizione lo scrive',
+        prosperita.desc==='Immediately gain '+D.BAL.blessingGrant+' attacks of each type', prosperita.desc);
+  setup(g,{wave:1, el:'fire', attacks:{fire:1,water:1,nature:1,light:1,darkness:1}});
+  const primaBened = g.totalAttacks();
+  g.claimArtifact(prosperita);
+  check('raccolta, paga su tutti e cinque i tipi',
+        g.totalAttacks()===primaBened + 5*D.BAL.blessingGrant &&
+        D.ELEMENTS.every(e => g.attacks[e]===1+D.BAL.blessingGrant),
+        primaBened+' -> '+g.totalAttacks());
+  check('e non finisce nello scaffale', g.artifacts.indexOf(prosperita)<0);
+
+  head('Boss disarmato: paga due artefatti');
+  g.skipChallenge = true;
+  setupRaw(g,{wave:21, el:'fire', attacks:{fire:60,water:9,nature:9,light:9,darkness:9}});
+  check('la calma del saggio disarma il boss', g.challenge===null && g.bossNerfed===true,
+        g.challenge+'/'+g.bossNerfed);
+  await killWith(g,'fire');
+  check('il resoconto dice che la sfida e- saltata',
+        /skipped/i.test(corpo().textContent), corpo().textContent);
+  const scelte = D.BAL.nerfedPicks;
+  const titolo = () => DOC.getElementById('reward-title').textContent;
+  const carte  = () => DOC.querySelectorAll('#reward-inner .artifact-card');
+  check('e si annuncia quante ne paga',
+        new RegExp('claim ' + scelte + ' artifacts', 'i').test(titolo()), titolo());
+  check('l-offerta e- piu- ampia, cosi- si sceglie davvero fino all-ultima',
+        carte().length === 4 + scelte - 1, carte().length);
+
+  let restanti = scelte, sceso = true;
+  for (let i = 0; i < scelte; i++) {
+    const quante = carte().length;
+    carte()[0].click();
+    await nextTick(); await nextTick();
+    restanti--;
+    if (restanti > 0) {
+      if (g.phase !== 'artifact' || carte().length !== quante - 1) sceso = false;
+    }
+  }
+  check('a ogni scelta resta il pannello con una carta in meno', sceso,
+        'fase ' + g.phase + ', carte ' + carte().length);
+  check('prese tutte, si passa all-onda dopo', g.wave===22 && g.phase==='fight', g.wave+'/'+g.phase);
+  check('e nello scaffale ne sono finite di piu- che con un boss normale',
+        g.artifacts.length >= 1, g.artifacts.length);
+  check('la sfida disarmata non si ripete', g.bossNerfed===false, g.bossNerfed);
+
+  /* un boss normale continua a pagarne uno solo */
+  setup(g,{wave:11, el:'fire', attacks:{fire:40}});
+  await killWith(g,'fire');
+  check('boss normale: una scelta sola',
+        /claim an artifact/i.test(DOC.getElementById('reward-title').textContent),
+        DOC.getElementById('reward-title').textContent);
+  DOC.querySelectorAll('#reward-inner .artifact-card')[0].click();
+  await nextTick(); await nextTick();
+  check('e si passa subito all-onda dopo', g.wave===12 && g.phase==='fight', g.wave+'/'+g.phase);
 
   /* ----------------------------------------------------- salvataggio */
   head('Salvataggio');
