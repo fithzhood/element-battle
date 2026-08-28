@@ -341,7 +341,7 @@ async function run(){
   head('Artefatti');
   check('32 artefatti in tutto', D.ARTIFACTS.length===32, D.ARTIFACTS.length);
   const withArt = D.ARTIFACTS.filter(a=>a.img).length;
-  check('20 con illustrazione, 12 senza', withArt===20 && D.ARTIFACTS.length-withArt===12, withArt);
+  check('tutti e 32 hanno l-illustrazione, nessun segnaposto', withArt===32, withArt);
   const artMissing=[];
   await Promise.all(D.ARTIFACTS.filter(a=>a.img).map(a=>
     fetch('img/art/'+a.img+'.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) artMissing.push(a.img); })));

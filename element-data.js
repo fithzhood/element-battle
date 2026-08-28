@@ -244,28 +244,28 @@ const ARTIFACTS = [];
     els: [el], regen: { [el]: 2 }
 }));
 
-/* scudi doppi: +1 e +1 dopo ogni combattimento — ILLUSTRAZIONI MANCANTI (img: null) */
+/* scudi doppi: +1 e +1 dopo ogni combattimento */
 [['fire', 'light', 'Flame and Light Shield'], ['fire', 'water', 'Fire and Water Shield'],
  ['nature', 'water', 'Water and Nature Shield'], ['light', 'water', 'Water and Light Shield'],
  ['darkness', 'water', 'Water and Darkness Shield'], ['light', 'nature', 'Nature and Light Shield'],
  ['darkness', 'nature', 'Nature and Darkness Shield'], ['darkness', 'light', 'Light and Darkness Shield'],
  ['fire', 'nature', 'Fire and Nature Shield'], ['darkness', 'fire', 'Fire and Darkness Shield']
 ].forEach(([a, b, name]) => ARTIFACTS.push({
-    id: 's2' + pair(a, b), slot: 'shield', img: null, missingArt: 's2' + pair(a, b), name: name,
+    id: 's2' + pair(a, b), slot: 'shield', img: 's2' + pair(a, b), name: name,
     desc: 'Recover 1 ' + ELEMENT_INFO[a].label.toLowerCase() + ' and 1 ' +
           ELEMENT_INFO[b].label.toLowerCase() + ' attack after combat',
     els: [a, b], regen: { [a]: 1, [b]: 1 }
 }));
 
-/* benedizioni: effetto immediato — ILLUSTRAZIONI MANCANTI */
+/* benedizioni: effetto immediato */
 ARTIFACTS.push({
-    id: 'b1', slot: 'blessing', img: null, missingArt: 'b1',
+    id: 'b1', slot: 'blessing', img: 'b1',
     name: 'Ancestral Mage Prosperity',
     desc: 'Immediately gain 3 attacks of each type',
     els: ELEMENTS.slice(), grant: 3
 });
 ARTIFACTS.push({
-    id: 'b2', slot: 'blessing', img: null, missingArt: 'b2',
+    id: 'b2', slot: 'blessing', img: 'b2',
     name: "Sage's Absolute Calm",
     desc: 'The next boss challenge has no effect',
     els: ['light'], skipChallenge: true

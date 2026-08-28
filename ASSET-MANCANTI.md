@@ -1,24 +1,13 @@
-# Element Battle — asset mancanti
+# Element Battle — stato degli asset
 
-Stato al 28 agosto 2026, dopo la ricostruzione del gioco.
+Aggiornato il 28 agosto 2026.
 
-Le illustrazioni originali stanno in `pic2/` (mostri), `armi/` (artefatti) e `pics/` (sfondi),
-tutte 2048×2048. Il gioco **non le carica**: usa le copie ridotte in `img/`, generate da quelle
-(36,3 MB → 3,2 MB). Se aggiungi un'illustrazione nuova, mettila nella cartella originale e
-rilancia `costruisci-immagini.py`.
+## Non manca più niente di obbligatorio
 
----
-
-## 1. Mancano davvero — 12 illustrazioni di artefatti
-
-Sono gli unici buchi veri: il gioco li mostra con uno stemma disegnato al volo
-(sfondo a due colori + i sigilli degli elementi) al posto dell'immagine.
-Si vede che è un segnaposto, ma non sembra rotto.
-
-### Scudi doppi (10) — `armi/s2XY.jpg`, 2048×2048
-
-Servono nello stesso stile dei cinque scudi singoli già presenti (`s1f`, `s1w`, `s1n`, `s1l`, `s1d`):
-uno scudo al centro, ambientato nell'elemento. Qui però l'elemento è doppio.
+Tutti e **32 gli artefatti hanno la loro illustrazione**. I 12 che mancavano —
+i 10 scudi doppi e le 2 benedizioni — sono stati generati con **Gemini
+(Nano Banana 2)** il 28 agosto 2026, nello stile degli altri: oggetto grande e
+centrato, illustrazione fantasy dipinta, lo sfondo è l'elemento stesso, 1:1.
 
 | file | artefatto | elementi |
 |---|---|---|
@@ -32,49 +21,44 @@ uno scudo al centro, ambientato nell'elemento. Qui però l'elemento è doppio.
 | `s2ln.jpg` | Nature and Light Shield | luce + natura |
 | `s2lw.jpg` | Water and Light Shield | luce + acqua |
 | `s2nw.jpg` | Water and Nature Shield | natura + acqua |
+| `b1.jpg` | Ancestral Mage Prosperity | tutti e cinque |
+| `b2.jpg` | Sage's Absolute Calm | luce |
 
-Le lettere sono `f` fuoco, `w` acqua, `n` natura, `l` luce, `d` buio, **in ordine alfabetico**
-(come le armi doppie `w2df`, `w2dl`, … che sono già tutte lì).
+Sono 1024×1024 (le vecchie sono 2048²): il gioco le riduce comunque a 320,
+quindi la differenza non si vede.
 
-### Benedizioni (2) — `armi/b1.jpg`, `armi/b2.jpg`, 2048×2048
+### La regola imparata generandole
 
-Non sono armi né scudi: sono effetti magici a uso singolo. Un oggetto rituale, non un'arma.
+Su una coppia di elementi il rischio è che **uno si mangi l'altro**. Alla prima
+passata `s2dn` e `s2dw` erano solo viola — di verde e di azzurro non c'era
+traccia — e `s2fn` aveva foglie rosso-autunno invece che verdi. Rifatti
+chiedendo esplicitamente il **colore tipico di ciascuno dei due**, ben presente e
+riconoscibile al primo colpo d'occhio. Le versioni scartate stanno in
+`armi/_scarti/`, che il generatore ignora perché guarda solo dentro `armi/`.
 
-| file | artefatto | cosa fa |
-|---|---|---|
-| `b1.jpg` | Ancestral Mage Prosperity | dà subito 3 attacchi di ogni tipo — un tesoro, cinque gemme, un'offerta |
-| `b2.jpg` | Sage's Absolute Calm | annulla la sfida del boss successivo — un saggio, un sigillo di quiete |
+## Se un giorno si vuole alzare l'asticella
 
----
+Niente di questo blocca qualcosa:
 
-## 2. Non mancano, ma se ci fossero il gioco guadagnerebbe
+- **Illustrazioni dedicate ai boss.** Il boss usa l'illustrazione dei mostri
+  normali del suo livello, con cornice e aura diverse. Cinque versioni
+  "sovrano", una per elemento, si vedrebbero.
+- **Schermata del finale e di fine partita.** Ora usano l'icona `Element.png`
+  ingrandita; un'illustrazione verticale (1024×1536) renderebbe di più.
+- **Icona a risoluzione piena.** `Element.png` è 256×256 e per l'APK viene
+  scalata; una 1024×1024 sarebbe più pulita sul telefono.
+- **Effetti sonori veri.** Ora sono sintetizzati con WebAudio (colpo, guadagno,
+  perdita, morte, boss, premio): funzionano e non pesano niente.
 
-Nessuno di questi blocca niente: sono migliorie.
+## Come sono fatte le cartelle
 
-- **Illustrazioni dei boss.** Il boss dell'onda 11, 21, … usa la stessa illustrazione dei
-  mostri normali del suo livello, con cornice e aura diverse. Cinque illustrazioni dedicate
-  (una per elemento, versione "sovrano") si vedrebbero.
-- **Schermata del finale.** Ora usa l'icona `Element.png` ingrandita. Un'illustrazione
-  larga (1024×1536, verticale) renderebbe la fine della campagna un momento vero.
-- **Schermata di fine partita.** Stessa cosa, in negativo.
-- **Icona dell'app a risoluzione piena.** `Element.png` è 256×256: basta per l'APK
-  (viene scalata), ma una 1024×1024 darebbe un'icona più pulita sul telefono.
-- **Effetti sonori.** Non ce n'è nessuno su disco: il gioco li **sintetizza** con WebAudio
-  (colpo, guadagno, perdita, morte, boss, premio). Funzionano e non pesano niente.
-  Dei suoni veri sarebbero meglio, ma non è un buco.
+`pic2/` (mostri), `armi/` (artefatti) e `pics/` (sfondi) tengono gli originali.
+Il gioco **non li apre**: carica solo `img/`, che sono le copie ridotte in WebP
+(40,1 MB → 3,5 MB). Dopo aver aggiunto o rifatto un'illustrazione va rilanciato:
 
----
+```bash
+python costruisci-immagini.py
+```
 
-## 3. Cosa c'è già e ora viene usato
-
-Roba che era sul disco e il vecchio gioco non mostrava mai:
-
-- **`armi/` — 20 illustrazioni.** Non erano referenziate da nessuna riga di codice.
-  Ora sono le figure degli artefatti: 5 armi singole, 10 armi doppie, 5 scudi singoli.
-- **`pic2/` livello 3 — 5 illustrazioni** (`fire3`, `water3`, `nature3`, `light3`, `darkness3`).
-  Il vecchio calcolo del livello saltava il 3: non uscivano mai. Ora sì.
-- **`pics/*bg.png` — 5 sfondi.** Prima erano lo sfondo pieno della pagina; ora sono una
-  velatura che ruota lentamente dietro al ritratto.
-
-Restano inutilizzati, ma per scelta: `pics/background.png`, `pics/background2.png`,
-`pics/pergamena*.png` (la pergamena della vecchia carta delle quest).
+Restano inutilizzati per scelta: `pics/background.png`, `pics/background2.png`,
+`pics/pergamena*.png`.
