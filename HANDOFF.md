@@ -189,6 +189,38 @@ questa scorciatoia il bot resterebbe piantato per sempre, e ogni verifica che
 uccide un nemico andrebbe riscritta. Le verifiche leggono `#report-body` e
 `#mystery-*` proprio cosi', a pannello costruito.
 
+**Le GIF non si ricreano a ogni colpo.** Prima ogni colpo buttava via l'`<img>`
+e ne creava un'altra con lo stesso `src`: per il browser e' una GIF nuova da
+decodificare da capo, ed e' li' che l'animazione arrancava — non nel resto del
+gioco. Adesso `gifNodes()` tiene **gli stessi due nodi** (immagine viva e canvas
+del fotogramma fermo) e scambia solo quale si vede; il fermo lo disegna
+dall'immagine che sta gia' girando. In piu' la GIF sta su un piano suo
+(`translateZ(0)`) e sui boss non le passa piu' sopra il filtro animato di
+`bossColors`: un `filter` che cambia a ogni fotogramma sopra un'immagine animata
+e' la ricetta per farla scattare.
+
+**In headless le immagini non si decodificano.** Con `--virtual-time-budget`
+un'`<img>` arriva a `complete = true` ma `naturalWidth = 0`: il tempo finto non
+muove il decodificatore, come non muove il thread audio del render della musica
+(`_musica.html` va aperta nel browser vero). Quindi il banco **non puo'**
+verificare che il fotogramma finisca sul canvas: verifica invece che, non
+potendo posare, il gioco lasci viva l'animazione e si prenoti per quando
+l'immagine arriva.
+
+**La barra in alto sta in piedi per un pelo.** Ci devono stare `best`, `wave`,
+`next` e i pulsanti **col numero piu' lungo che i contatori raggiungono** (tre
+cifre) e con Art acceso, su 360 px. Con tre pulsanti icona traboccava di 34 px e
+il chip `next` finiva fuori schermo. Ora gli interruttori di suoni e musica
+stanno **dentro il pannello `?`** e Art e' un'icona: restano 44 px di margine a
+360 e 68 a 384. `_shot.html?drive=barra` lo misura e lo scrive nel titolo.
+
+**Il generatore della clear va tenuto al passo.** Due difetti trovati insieme il
+28 ago: ritagliava l'html per **stringa esatta** (un pulsante riscritto su tre
+righe restava dentro) e quando non trovava un pezzo si limitava a stampare un
+avviso, che scorre via. Ora ritaglia per **id**, la mancanza e' **fatale**, e
+`togli_blocco` sa risalire anche i commenti scritti in prosa. Se aggiungi un
+metodo che nomina il segreto, mettilo in `METODI`.
+
 **Screenshot headless.** `--window-size` non viene rispettato: la pagina si
 impagina a 526×700 e lo scatto ritaglia. Per questo c'è `_shot.html`, che mette
 il gioco in un iframe di misura data. Con `--blink-settings=accessibilityFontScaleFactor=1.3`
