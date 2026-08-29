@@ -851,10 +851,14 @@ async function run(){
         new Set(g.enemy.mods.map(m=>m.id)).size===g.enemy.mods.length);
   setup(g,{wave:31, el:'fire', attacks:{fire:60,water:60,nature:60,light:60,darkness:60}});
   g.createEnemy(); g.busy = false; g.phase = 'fight';
-  check('sui boss no: hanno gia- la loro sfida',
-        g.enemy.boss===true && g.enemy.mods.length===0, g.enemy.mods.length);
+  check('li prendono anche i boss, sopra alla loro sfida',
+        g.enemy.boss===true && g.enemy.mods.length===D.modSlots(31), g.enemy.mods.length);
+  D.BAL.modMax = 0;
+  setup(g,{wave:33, el:'fire', attacks:{fire:60,water:60,nature:60,light:60,darkness:60}});
+  g.createEnemy(); g.busy = false; g.phase = 'fight';
   check('e senza modificatori il ritratto non mostra badge',
-        DOC.getElementById('mods').hidden===true);
+        g.enemy.mods.length===0 && DOC.getElementById('mods').hidden===true);
+  D.BAL.modMax = 1;
 
   /* ogni effetto, forzato uno alla volta */
   /* Forza UN modificatore e rifa' il mostro passando dalla creazione vera:
@@ -944,6 +948,30 @@ async function run(){
         g.enemy.boss===false && g.enemy.baseHp===42 && g.enemy.maxHp===52,
         g.enemy.baseHp+'/'+g.enemy.maxHp);
   D.BAL.modMax = 0;
+
+  head('Fumetti della prima volta');
+  const srcT = await fetch(CLEAR ? 'element-clear.js' : 'element.js').then(r => r.text());
+  check('sotto banco di prova non escono mai',
+        /if \(FAST \|\| !TIP_TESTI\[id\]/.test(srcT), 'guardia FAST');
+  check('ci sono i testi dei cinque eventi',
+        ['light','darkness','mod','quest','challenge'].every(k => new RegExp(k + ':').test(srcT)));
+  check('il fumetto e la sua vela stanno nella pagina',
+        !!DOC.getElementById('tip') && !!DOC.getElementById('tip-veil') &&
+        !!DOC.getElementById('tip-never-box'));
+  check('e partono nascosti', DOC.getElementById('tip').hidden===true &&
+        DOC.getElementById('tip-veil').hidden===true);
+  /* la logica del "una volta sola" si prova dal magazzino, che e' quello che
+     decide: il fumetto vero non esce sotto ?fast */
+  const LS = DOC.defaultView.localStorage;
+  const primaVisti = LS.getItem('elementBattle.tipsSeen');
+  LS.setItem('elementBattle.tipsSeen', JSON.stringify(['darkness']));
+  check('un fumetto gia- visto resta segnato',
+        JSON.parse(LS.getItem('elementBattle.tipsSeen')).indexOf('darkness') >= 0);
+  LS.setItem('elementBattle.tips', 'off');
+  check('e la casella li spegne tutti', LS.getItem('elementBattle.tips')==='off');
+  LS.removeItem('elementBattle.tips');
+  if (primaVisti === null) LS.removeItem('elementBattle.tipsSeen');
+  else LS.setItem('elementBattle.tipsSeen', primaVisti);
 
   head('Versione in schermata');
   g.showStart();

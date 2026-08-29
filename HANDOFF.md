@@ -378,8 +378,9 @@ Due scale diverse, ed è la parte che conta:
   hai in mano** (`modChance`, da `modFrom` a `modFull`). Chi va bene incontra un
   gioco più cattivo, chi arranca lo incontra più mite.
 
-I **boss non ne prendono**: hanno già la loro sfida, e sommare le due cose
-punirebbe due volte la stessa onda.
+**Li prendono anche i boss**, sopra alla loro sfida: era una scelta esplicita
+(all'inizio li avevo esclusi). Si sente proprio dove serviva — la campagna
+chiusa passa dal 53% al **39%** e la curva cala fino in fondo (71 / 67 / 53).
 
 Misurato, 150 partite per taratura, col gioco forte:
 
@@ -404,6 +405,27 @@ PV in più diventerebbe un boss.
 `run()`): tolgono e aggiungono attacchi a sorpresa, e una prova che misura
 un'altra cosa fallirebbe a intermittenza. Li riaccende solo il blocco che li
 riguarda.
+
+**0-sexies. I fumetti della prima volta (29 ago 2026).** Alcune regole non si
+vedono: la luce che rende solo a certe condizioni, il buio che toglie un
+attacco ma raddoppia il colpo dopo, un modificatore che cambia le regole del
+turno. Adesso **la prima volta che succedono** esce un fumetto con la punta sul
+punto che spiegano (`Tips` e `TIP_TESTI` in `element.js`, cinque eventi:
+`light`, `darkness`, `mod`, `quest`, `challenge`).
+
+- ognuno esce **una volta sola**, e se lo ricorda in `elementBattle.tipsSeen`;
+- la casella *Don't show tips again* li spegne tutti (`elementBattle.tips`);
+- **sotto `?fast` non escono mai**, se no bloccherebbero il bot ad aspettare un
+  tocco — stessa guardia dei pannelli;
+- si aprono con `tipDopo()`, che aspetta la fine del disegno: il fumetto si
+  posiziona **misurando** il bersaglio, e chiamato in mezzo a una `render*`
+  misurerebbe un elemento che sta ancora prendendo posto.
+
+Per fotografarne uno: `_shot.html?drive=tip&quale=darkness&scorda=1` — `scorda`
+svuota il magazzino dei visti **prima** che parta la pagina del gioco.
+
+I badge dei modificatori **pulsano** finché sono a schermo: fermi in un angolo
+del ritratto non li guardava nessuno, e cambiano le regole del turno.
 
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21

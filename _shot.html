@@ -10,6 +10,14 @@ f.src = 'element.html?' + (q.get('q') || 'auto&debug');
 document.body.appendChild(f);
 
 const drive = q.get('drive');
+
+/* I fumetti escono una volta sola e se lo ricordano: per fotografarne uno va
+   dimenticato PRIMA che la pagina del gioco parta. Stessa origine, quindi da
+   qui si arriva allo stesso magazzino. */
+if (q.get('scorda')) {
+  localStorage.removeItem('elementBattle.tipsSeen');
+  localStorage.removeItem('elementBattle.tips');
+}
 const pausa = n => new Promise(r => setTimeout(r, n));
 
 /* victory() adesso si ferma sul resoconto dell'onda e aspetta un tocco:
@@ -98,6 +106,19 @@ f.onload = () => setTimeout(async () => {
                             const D2 = f.contentWindow.ElementData;
                             if (voluti.length) g.rollModifiers = () => voluti.map(id => D2.MODIFIER_BY_ID[id]);
                             g.createEnemy(); g.busy = false; g.phase = 'fight'; g.renderAll(); }
+  /* un fumetto: `quale` sceglie l'innesco */
+  if (cmd === 'tip')      { const quale = q.get('quale') || 'darkness';
+                            g.wave = +(q.get('wave') || 34); g.nextElement = arg2El(q.get('el'));
+                            g.attacks = {fire:9,water:9,nature:9,light:9,darkness:9};
+                            if (quale === 'mod') {
+                              const D3 = f.contentWindow.ElementData;
+                              g.rollModifiers = () => [D3.MODIFIER_BY_ID['seal'], D3.MODIFIER_BY_ID['thorns']];
+                            }
+                            g.createEnemy(); g.busy = false; g.phase = 'fight';
+                            if (quale === 'darkness') await g.attack('darkness');
+                            if (quale === 'light') { g.attacks = {fire:1,water:1,nature:0,light:5,darkness:1};
+                                                     g.renderAll(); await g.attack('light'); }
+                            await pausa(700); }
   if (cmd === 'carica')   { g.wave = +(q.get('wave') || 30); g.nextElement = arg2El(q.get('el'));
                             g.createEnemy();
                             g.attacks = {fire:2,water:1,nature:3,light:2,darkness:0};
