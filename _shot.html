@@ -91,6 +91,13 @@ f.onload = () => setTimeout(async () => {
                             const sp = Math.round(t.querySelector('.spacer').getBoundingClientRect().width);
                             document.title = (avanzo >= 0 ? 'CI STA' : 'TRABOCCA di ' + (-avanzo) + 'px')
                                              + ' · margine ' + sp + 'px'; }
+  /* un mostro con addosso qualche modificatore */
+  if (cmd === 'mods')     { g.wave = +(q.get('wave') || 33); g.nextElement = arg2El(q.get('el'));
+                            g.attacks = {fire:40,water:40,nature:40,light:40,darkness:40};
+                            const voluti = (q.get('quali') || '').split(',').filter(Boolean);
+                            const D2 = f.contentWindow.ElementData;
+                            if (voluti.length) g.rollModifiers = () => voluti.map(id => D2.MODIFIER_BY_ID[id]);
+                            g.createEnemy(); g.busy = false; g.phase = 'fight'; g.renderAll(); }
   if (cmd === 'carica')   { g.wave = +(q.get('wave') || 30); g.nextElement = arg2El(q.get('el'));
                             g.createEnemy();
                             g.attacks = {fire:2,water:1,nature:3,light:2,darkness:0};

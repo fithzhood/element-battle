@@ -363,6 +363,48 @@ non arrivavano, e ha misurato **5%** invece del 23% vero. Il modello di costo
 del bot fa parte del bilanciamento quanto le manopole: **se cambi una regola,
 guarda se il banco la conosce.**
 
+**0-quinquies. I modificatori, ed è qui che il finale ha ripreso attrito
+(29 ago 2026).** Nove modificatori (`MODIFIERS` in `element-data.js`) che il
+mostro può portarsi addosso: `ward` +10 PV, `mute` niente quest, `seal`
+artefatti muti per quel combattimento, `curse` bottino cieco per tre onde,
+`dull` −1 danno, `scale` niente super efficacia, `toll` −2 attacchi all'entrata,
+`greed` bottino più magro, `thorns` un attacco ogni tre colpi.
+
+Due scale diverse, ed è la parte che conta:
+
+- **quanti** ne può portare dipende dall'**onda**: nessuno nella prima decina,
+  uno nella seconda, due nella terza (`modSlots`);
+- **quanto è probabile** che un posto sia occupato dipende da **quanti attacchi
+  hai in mano** (`modChance`, da `modFrom` a `modFull`). Chi va bene incontra un
+  gioco più cattivo, chi arranca lo incontra più mite.
+
+I **boss non ne prendono**: hanno già la loro sfida, e sommare le due cose
+punirebbe due volte la stessa onda.
+
+Misurato, 150 partite per taratura, col gioco forte:
+
+| taratura | campagna | oltre 21 | oltre 51 | oltre 81 |
+|---|---|---|---|---|
+| spenti | 72% | 75% | 72% | 72% |
+| da 30, pieno a 110 | 71% | 73% | 71% | 71% |
+| da 25, pieno a 90 | 59% | 71% | 67% | 63% |
+| **da 20, pieno a 70 (adesso)** | **53%** | 73% | 69% | 61% |
+| da 10, pieno a 40 | 1% | 71% | 66% | crollo |
+
+**La curva finalmente scende invece di restare piatta**, che era il difetto
+aperto da sempre. Se un giorno si vuole più duro, la leva è abbassare
+`modFull`: fra 70 e 40 c'è tutto lo spazio che serve.
+
+**Trappola.** I PV nominali dell'onda (`enemy.baseHp`) restano il metro di
+tutto — livello dell'illustrazione, boss sì o no, ricompense, record. `ward`
+alza solo `maxHp`. Se alzasse anche il metro, un mostro dell'onda 11 con dieci
+PV in più diventerebbe un boss.
+
+**Nel banco i modificatori sono spenti di serie** (`D.BAL.modMax = 0` in cima a
+`run()`): tolgono e aggiungono attacchi a sorpresa, e una prova che misura
+un'altra cosa fallirebbe a intermittenza. Li riaccende solo il blocco che li
+riguarda.
+
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21
 non muore più — le ultime 60 onde non hanno attrito. La causa non sono i

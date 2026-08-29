@@ -130,6 +130,13 @@ async function run(){
   DOC = f.contentDocument;
   const W = f.contentWindow, D = W.ElementData, g = W.__el;
 
+  /* I modificatori dei nemici sono spenti per quasi tutto il banco: tolgono e
+     aggiungono attacchi a sorpresa, e una prova che misura un'altra cosa
+     fallirebbe a intermittenza senza motivo apparente. Li riaccende solo il
+     blocco che li riguarda. */
+  const MOD_MAX = D.BAL.modMax;
+  D.BAL.modMax = 0;
+
   /* ------------------------------------------------------- tabelle */
   head('Tabella dei danni (identica al gioco originale)');
   check('fuoco vs natura = 8', D.baseDamage('fire','nature',false,false)===8);
@@ -811,6 +818,132 @@ async function run(){
   check('e la barra non trabocca piu-',
         DOC.getElementById('topbar').scrollWidth <= DOC.getElementById('topbar').clientWidth + 1,
         DOC.getElementById('topbar').scrollWidth + ' su ' + DOC.getElementById('topbar').clientWidth);
+
+  /* ------------------------------------------------- modificatori */
+  head('Modificatori dei nemici');
+  check('nessun posto nella prima decina', D.modSlots(1)===0 && D.modSlots(10)===0,
+        D.modSlots(1)+'/'+D.modSlots(10));
+  check('uno nella seconda, due nella terza, e cosi- via',
+        D.modSlots(11)===1 && D.modSlots(20)===1 && D.modSlots(21)===2 && D.modSlots(91)===9,
+        [11,20,21,91].map(w=>D.modSlots(w)).join(','));
+  D.BAL.modMax = MOD_MAX;
+  check('con pochi attacchi in mano la probabilita- e- zero',
+        D.modChance(D.BAL.modFrom)===0 && D.modChance(0)===0, D.modChance(D.BAL.modFrom));
+  check('e cresce con la ricchezza, non con l-onda',
+        D.modChance(D.BAL.modFull) === D.BAL.modMax &&
+        D.modChance((D.BAL.modFrom+D.BAL.modFull)/2) > 0 &&
+        D.modChance((D.BAL.modFrom+D.BAL.modFull)/2) < D.BAL.modMax,
+        D.modChance((D.BAL.modFrom+D.BAL.modFull)/2).toFixed(2));
+
+  /* con la probabilita- al massimo e molti attacchi, i posti si riempiono.
+     setup() mette gli attacchi DOPO aver creato il mostro, e il tiro guarda
+     proprio quelli: si rifa' il mostro a mano piena. */
+  D.BAL.modMax = 1;
+  setup(g,{wave:33, el:'fire', attacks:{fire:60,water:60,nature:60,light:60,darkness:60}});
+  g.createEnemy(); g.busy = false; g.phase = 'fight';
+  check('a onda 33 e mani piene ne prende tre', g.enemy.mods.length===3,
+        g.enemy.mods.map(m=>m.id).join(','));
+  check('e i badge compaiono nel ritratto, uno per modificatore',
+        DOC.getElementById('mods').hidden===false &&
+        DOC.querySelectorAll('#mods .mod').length===3,
+        DOC.querySelectorAll('#mods .mod').length);
+  check('mai due volte lo stesso',
+        new Set(g.enemy.mods.map(m=>m.id)).size===g.enemy.mods.length);
+  setup(g,{wave:31, el:'fire', attacks:{fire:60,water:60,nature:60,light:60,darkness:60}});
+  g.createEnemy(); g.busy = false; g.phase = 'fight';
+  check('sui boss no: hanno gia- la loro sfida',
+        g.enemy.boss===true && g.enemy.mods.length===0, g.enemy.mods.length);
+  check('e senza modificatori il ritratto non mostra badge',
+        DOC.getElementById('mods').hidden===true);
+
+  /* ogni effetto, forzato uno alla volta */
+  /* Forza UN modificatore e rifa' il mostro passando dalla creazione vera:
+     cosi- si prova il motore, non l-aritmetica riscritta nella prova. */
+  const conMod = (id, opt) => {
+    D.BAL.modMax = 0;
+    setup(g, Object.assign({wave:33, el:'fire'}, opt));
+    const vero = g.rollModifiers;
+    g.rollModifiers = () => [D.MODIFIER_BY_ID[id]];
+    /* createEnemy CONSUMA nextElement e ne estrae un altro a caso: senza
+       rimetterlo, il mostro rifatto e' di un elemento qualunque e i conti sul
+       danno saltano */
+    g.nextElement = (opt && opt.el) || 'fire';
+    g.createEnemy();
+    g.rollModifiers = vero;
+    g.challenge = null; g.busy = false; g.phase = 'fight';
+    g.renderAll();
+  };
+
+  conMod('ward', {attacks:{fire:40}});
+  check('Warded: dieci PV in piu- ma il metro resta quello dell-onda',
+        g.enemy.maxHp===g.enemy.baseHp+10 && g.enemy.baseHp===42 && g.enemy.boss===false,
+        g.enemy.baseHp+' -> '+g.enemy.maxHp);
+
+  conMod('dull', {attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  const dannoPieno = D.baseDamage('water','fire',false,false);
+  check('Dulling: ogni colpo fa 1 in meno', g.damageOf('water')===dannoPieno-1,
+        g.damageOf('water')+' invece di '+dannoPieno);
+
+  conMod('scale', {attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  check('Scaled: il super non raddoppia piu-', g.damageOf('water')===4, g.damageOf('water'));
+
+  conMod('seal', {attacks:{fire:9}, artifacts:[D.ARTIFACT_BY_ID['w1f'], D.ARTIFACT_BY_ID['s1f']]});
+  check('Sealed: la spada non aggiunge danno',
+        g.damageOf('fire')===D.baseDamage('fire','fire',false,false), g.damageOf('fire'));
+  const primaScudi = g.attacks.fire;
+  check('Sealed: e lo scudo non restituisce niente',
+        g.applyShields().length===0 && g.attacks.fire===primaScudi);
+
+  conMod('greed', {attacks:{fire:40}});
+  const pienoPack = D.rewardUnit(g.enemy.baseHp);
+  check('Ravenous: un attacco in meno nel bottino', g.packSize()===pienoPack-1,
+        g.packSize()+' invece di '+pienoPack);
+
+  conMod('mute', {attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.pickQuestOrChallenge();
+  check('Mute: nessuna quest da guadagnare', g.quest===null, g.quest && g.quest.type);
+
+  conMod('toll', {attacks:{fire:9,water:9}});
+  const primaPedaggio = g.totalAttacks();
+  g.applyModEntry();
+  check('Toll: due attacchi presi all-ingresso', g.totalAttacks()===primaPedaggio-2,
+        primaPedaggio+' -> '+g.totalAttacks());
+
+  conMod('thorns', {attacks:{fire:40}});
+  const primaRovo = g.totalAttacks();
+  await g.attack('fire'); await g.attack('fire');
+  const dueColpi = g.totalAttacks();
+  check('Thorned: i primi due colpi costano solo se stessi',
+        dueColpi===primaRovo-2, primaRovo+' -> '+dueColpi);
+  await g.attack('fire');
+  check('e il terzo ne costa uno in piu-', g.totalAttacks()===dueColpi-2,
+        dueColpi+' -> '+g.totalAttacks());
+
+  conMod('curse', {attacks:{fire:40}});
+  g.applyModEntry();
+  check('Cursed: la maledizione dura tre onde', g.cursed===3, g.cursed);
+  await killWith(g,'fire');
+  const cieche = DOC.querySelectorAll('#reward-inner .pack.mystery').length;
+  check('e tutte le carte del bottino diventano un punto interrogativo',
+        cieche===DOC.querySelectorAll('#reward-inner .pack').length && cieche>0, cieche);
+  DOC.querySelector('#reward-inner .pack').click();
+  await nextTick(); await nextTick();
+  check('scaduta un-onda, ne restano due', g.cursed===2, g.cursed);
+
+  /* il salvataggio se li ricorda */
+  D.BAL.modMax = 0;
+  setup(g,{wave:33, el:'water', attacks:{fire:9,water:9}});
+  g.enemy.mods = [D.MODIFIER_BY_ID['ward'], D.MODIFIER_BY_ID['dull']];
+  g.enemy.maxHp = g.enemy.baseHp + 10; g.enemy.hp = g.enemy.maxHp;
+  g.cursed = 2;
+  g.save(); g.continueGame();
+  check('ricaricando la partita i modificatori ci sono ancora',
+        g.enemy.mods.length===2 && g.enemy.mods[0].id==='ward' && g.cursed===2,
+        g.enemy.mods.map(m=>m.id).join(',')+' / maledizione '+g.cursed);
+  check('e i PV gonfiati non diventano un boss per sbaglio',
+        g.enemy.boss===false && g.enemy.baseHp===42 && g.enemy.maxHp===52,
+        g.enemy.baseHp+'/'+g.enemy.maxHp);
+  D.BAL.modMax = 0;
 
   head('Versione in schermata');
   g.showStart();
