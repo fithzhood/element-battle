@@ -960,43 +960,59 @@ async function run(){
         !!DOC.getElementById('tip-never-box'));
   check('e partono nascosti', DOC.getElementById('tip').hidden===true &&
         DOC.getElementById('tip-veil').hidden===true);
-  /* la logica del "una volta sola" si prova dal magazzino, che e' quello che
-     decide: il fumetto vero non esce sotto ?fast */
   const LS = DOC.defaultView.localStorage;
-  const primaVisti = LS.getItem('elementBattle.tipsSeen');
-  LS.setItem('elementBattle.tipsSeen', JSON.stringify(['darkness']));
-  check('un fumetto gia- visto resta segnato',
-        JSON.parse(LS.getItem('elementBattle.tipsSeen')).indexOf('darkness') >= 0);
-  LS.setItem('elementBattle.tips', 'off');
-  check('e la casella li spegne tutti', LS.getItem('elementBattle.tips')==='off');
+  const T = DOC.defaultView.__elTips;
+  /* i due livelli: quello che passa con lo spegnimento e quello che resta */
+  T.visti.clear(); T.off = false; T.permanente(false);
+  T.segna('darkness');
+  check('un fumetto visto non si ripropone in questa partita',
+        T.da_mostrare('darkness')===false && T.da_mostrare('quest')===true);
+  check('ma i visti NON finiscono nel magazzino: riaprendo si ricomincia',
+        LS.getItem('elementBattle.tipsSeen')===null, LS.getItem('elementBattle.tipsSeen'));
+  T.spegni();
+  check('la casella del fumetto li ferma solo per questa partita',
+        T.off===true && T.da_mostrare('quest')===false &&
+        LS.getItem('elementBattle.tipsOff')===null,
+        'off ' + T.off + ', magazzino ' + LS.getItem('elementBattle.tipsOff'));
+  T.off = false;
   check('due richiesti insieme si mettono in fila, non si sovrascrivono',
         /if \(this\.tipAperto\) \{/.test(srcT) && /Tips\.coda\.push/.test(srcT), 'coda');
   check('e quello che non si e- potuto mostrare non risulta visto',
         /\{ this\.prossimoTip\(\); return; \}/.test(srcT), 'niente segno se non si mostra');
 
-  /* il pulsante che li riaccende, provato davvero. Il modulo tiene lo stato in
-     memoria, non nel magazzino: va sporcato li-, se no il pulsante e- spento a
-     ragione perche' non c-e- niente da riaccendere */
-  const T = DOC.defaultView.__elTips;
-  g.showHelp();
-  check('senza niente da riaccendere il pulsante e- spento',
-        DOC.querySelector('#help-notes .help-tips').disabled===true);
-  DOC.getElementById('btn-help-go').click();
+  /* l-interruttore vero, nelle impostazioni: quello sopravvive allo spegnimento */
+  const swTips = DOC.getElementById('btn-tips');
   T.segna('darkness');
-  g.showHelp();
-  const rivedi = DOC.querySelector('#help-notes .help-tips');
-  check('visto un fumetto, il prontuario offre di rivederli',
-        !!rivedi && rivedi.disabled===false, rivedi && rivedi.disabled);
-  rivedi.click();
-  check('e riaccenderli svuota magazzino e memoria',
-        LS.getItem('elementBattle.tips')===null && LS.getItem('elementBattle.tipsSeen')===null &&
-        T.visti.size===0 && T.off===false,
-        LS.getItem('elementBattle.tipsSeen') + ' / in memoria ' + T.visti.size);
-  check('il pulsante si spegne da solo, non c-e- piu- niente da riaccendere',
-        rivedi.disabled===true);
-  DOC.getElementById('btn-help-go').click();
-  if (primaVisti === null) LS.removeItem('elementBattle.tipsSeen');
-  else LS.setItem('elementBattle.tipsSeen', primaVisti);
+  swTips.click();
+  check('l-interruttore delle impostazioni li spegne per sempre',
+        T.mai===true && LS.getItem('elementBattle.tipsOff')==='yes' &&
+        T.da_mostrare('quest')===false, LS.getItem('elementBattle.tipsOff'));
+  check('e si vede che sono spenti', swTips.classList.contains('muted'));
+  swTips.click();
+  check('riaccesi, torna tutto da capo anche quello gia- visto',
+        T.mai===false && LS.getItem('elementBattle.tipsOff')===null &&
+        T.visti.size===0 && T.da_mostrare('darkness')===true,
+        'visti ' + T.visti.size);
+
+  /* gli stessi comandi in due posti, un solo stato */
+  head('Suoni e musica: due posti, un interruttore solo');
+  const s1 = DOC.getElementById('btn-sound'), s2 = DOC.getElementById('btn-sound2');
+  const m1 = DOC.getElementById('btn-music'), m2 = DOC.getElementById('btn-music2');
+  check('ci sono anche accanto al nome del mostro', !!s2 && !!m2);
+  const acceso = !s1.classList.contains('muted');
+  s2.click();
+  check('toccando quello sul gioco cambia anche quello nel pannello',
+        s1.classList.contains('muted') === acceso &&
+        s2.classList.contains('muted') === acceso,
+        'pannello ' + s1.className + ' / gioco ' + s2.className);
+  s1.click();
+  check('e viceversa', s2.classList.contains('muted') !== acceso);
+  const musAcceso = !m1.classList.contains('muted');
+  m2.click();
+  check('lo stesso per la musica',
+        m1.classList.contains('muted') === musAcceso &&
+        m2.classList.contains('muted') === musAcceso);
+  m1.click();
 
   head('Versione in schermata');
   g.showStart();

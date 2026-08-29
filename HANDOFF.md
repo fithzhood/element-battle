@@ -424,8 +424,12 @@ turno. Adesso **la prima volta che succedono** esce un fumetto con la punta sul
 punto che spiegano (`Tips` e `TIP_TESTI` in `element.js`, cinque eventi:
 `light`, `darkness`, `mod`, `quest`, `challenge`).
 
-- ognuno esce **una volta sola**, e se lo ricorda in `elementBattle.tipsSeen`;
-- la casella *Don't show tips again* li spegne tutti (`elementBattle.tips`);
+- **due livelli, e uno solo sopravvive allo spegnimento.** `Tips.visti` e
+  `Tips.off` vivono *solo in memoria*: riaprendo il gioco i fumetti
+  ricominciano da capo, ed e' voluto — la casella sul fumetto (*Stop tips for
+  this run*) vale per la partita in corso, non per sempre. Quella per sempre e'
+  l'interruttore **Tips** nel pannello `?`, che sta in `elementBattle.tipsOff`.
+  Riaccenderlo azzera anche i visti, cosi' tornano tutti;
 - **sotto `?fast` non escono mai**, se no bloccherebbero il bot ad aspettare un
   tocco — stessa guardia dei pannelli;
 - si aprono con `tipDopo()`, che aspetta la fine del disegno: il fumetto si
@@ -445,8 +449,15 @@ punto che spiegano (`Tips` e `TIP_TESTI` in `element.js`, cinque eventi:
 Per fotografarne uno: `_shot.html?drive=tip&quale=darkness&scorda=1` — `scorda`
 svuota il magazzino dei visti **prima** che parta la pagina del gioco.
 
-I badge dei modificatori **pulsano** finché sono a schermo: fermi in un angolo
-del ritratto non li guardava nessuno, e cambiano le regole del turno.
+I badge dei modificatori **tremano** ogni tre secondi e mezzo, e sono 44 px.
+Prima pulsavano (un alone che va e viene) ed erano 30: non li vedeva nessuno.
+Il movimento l'occhio lo prende anche di lato, e fra una scossa e l'altra stanno
+fermi abbastanza da non dare fastidio. Toccato uno, quello smette.
+
+**Suoni e musica si comandano da due posti**: gli interruttori grandi nel
+pannello `?` e due pulsantini accanto al nome del mostro, dove c'era spazio
+sprecato. Un solo stato per tutti e due: `renderSwitches()` li rimette in riga
+dopo ogni cambio, e se un domani se ne aggiunge un terzo posto va aggiunto li'.
 
 **1. Il bilanciamento è a due gobbe.** Il bot dice: gioco forte → mediana onda
 13, ma **una corsa su tre arriva in fondo**; e chi passa il boss dell'onda 21
