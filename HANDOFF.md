@@ -382,15 +382,26 @@ Due scale diverse, ed è la parte che conta:
 (all'inizio li avevo esclusi). Si sente proprio dove serviva — la campagna
 chiusa passa dal 53% al **39%** e la curva cala fino in fondo (71 / 67 / 53).
 
+La salita **non e' dritta ma curva** (`modCurve`, esponente 2): con una rampa
+lineare uscivano gia' troppo presto — a meta' strada erano uno su due. Adesso
+con 40 attacchi in mano la probabilita' e' del 6%, con 55 del 39%, con 70 e
+oltre del 100%: rari finche' si e' poveri, addosso quando si e' pieni.
+
 Misurato, 150 partite per taratura, col gioco forte:
 
-| taratura | campagna | oltre 21 | oltre 51 | oltre 81 |
-|---|---|---|---|---|
-| spenti | 72% | 75% | 72% | 72% |
-| da 30, pieno a 110 | 71% | 73% | 71% | 71% |
-| da 25, pieno a 90 | 59% | 71% | 67% | 63% |
-| **da 20, pieno a 70 (adesso)** | **53%** | 73% | 69% | 61% |
-| da 10, pieno a 40 | 1% | 71% | 66% | crollo |
+| taratura | campagna |
+|---|---|
+| spenti | 72% |
+| rampa dritta da 20 a 70, solo mostri | 53% |
+| rampa dritta da 20 a 70, anche boss | 39% |
+| curva da 30 a 85 | ~74% |
+| **curva da 30 a 70 (adesso)** | **~61%** |
+
+**ATTENZIONE, e' successo tre volte in due giorni:** una misura sola da 150
+partite su questa distribuzione **inganna**. La curva da 30 a 85 era uscita al
+62% in un giro e al 73-75% nei due successivi; la 30-70 al 73% in un giro e al
+64-58% nei due dopo. Prima di credere a un ordinamento, **rimisurare appaiate e
+due volte**.
 
 **La curva finalmente scende invece di restare piatta**, che era il difetto
 aperto da sempre. Se un giorno si vuole più duro, la leva è abbassare

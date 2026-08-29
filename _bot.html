@@ -300,6 +300,10 @@ async function main(){
     ['X1 · modificatori al massimo',       smart, true, Object.assign({modFrom:10, modFull:40, modMax:1}, D2)],
     ['X2 · modificatori spenti',           smart, true, Object.assign({modMax:0}, D2)],
     ['Y1 · mod da 20, pieno a 70',         smart, true, Object.assign({modFrom:20, modFull:70,  modMax:1}, D2)],
+    /* la curva tiene l-inizio raro; il punto d-arrivo decide quanto morde dopo */
+    ['C85 · curva, pieno a 85 (pubblicato)', smart, true, Object.assign({modFrom:30, modFull:85, modCurve:2}, D2)],
+    ['C70 · curva, pieno a 70',            smart, true, Object.assign({modFrom:30, modFull:70, modCurve:2}, D2)],
+    ['C60 · curva, pieno a 60',            smart, true, Object.assign({modFrom:30, modFull:60, modCurve:2}, D2)],
     ['Y2 · mod da 25, pieno a 90',         smart, true, Object.assign({modFrom:25, modFull:90,  modMax:1}, D2)],
     ['Y3 · mod da 30, pieno a 110',        smart, true, Object.assign({modFrom:30, modFull:110, modMax:1}, D2)],
     ['B · misto, prende sempre la calma',  smart, true, D2, null, true],
