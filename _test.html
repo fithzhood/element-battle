@@ -956,29 +956,53 @@ async function run(){
   check('ci sono i testi dei cinque eventi',
         ['light','darkness','mod','quest','challenge'].every(k => new RegExp(k + ':').test(srcT)));
   check('il fumetto e la sua vela stanno nella pagina',
-        !!DOC.getElementById('tip') && !!DOC.getElementById('tip-veil') &&
-        !!DOC.getElementById('tip-never-box'));
+        !!DOC.getElementById('tip') && !!DOC.getElementById('tip-veil'));
+  check('e sul fumetto non c-e- piu- la casella che zittiva tutti gli altri',
+        DOC.getElementById('tip-never-box')===null);
   check('e partono nascosti', DOC.getElementById('tip').hidden===true &&
         DOC.getElementById('tip-veil').hidden===true);
   const LS = DOC.defaultView.localStorage;
   const T = DOC.defaultView.__elTips;
   /* i due livelli: quello che passa con lo spegnimento e quello che resta */
-  T.visti.clear(); T.off = false; T.permanente(false);
+  T.visti.clear(); T.permanente(false);
   T.segna('darkness');
   check('un fumetto visto non si ripropone in questa partita',
-        T.da_mostrare('darkness')===false && T.da_mostrare('quest')===true);
-  check('ma i visti NON finiscono nel magazzino: riaprendo si ricomincia',
+        T.da_mostrare('darkness')===false);
+  check('ma non zittisce gli altri: quelli nuovi si vedono lo stesso',
+        T.da_mostrare('quest')===true && T.da_mostrare('light')===true &&
+        T.da_mostrare('mod')===true);
+  check('e i visti NON finiscono nel magazzino: riaprendo si ricomincia',
         LS.getItem('elementBattle.tipsSeen')===null, LS.getItem('elementBattle.tipsSeen'));
-  T.spegni();
-  check('la casella del fumetto li ferma solo per questa partita',
-        T.off===true && T.da_mostrare('quest')===false &&
-        LS.getItem('elementBattle.tipsOff')===null,
-        'off ' + T.off + ', magazzino ' + LS.getItem('elementBattle.tipsOff'));
-  T.off = false;
   check('due richiesti insieme si mettono in fila, non si sovrascrivono',
         /if \(this\.tipAperto\) \{/.test(srcT) && /Tips\.coda\.push/.test(srcT), 'coda');
   check('e quello che non si e- potuto mostrare non risulta visto',
         /\{ this\.prossimoTip\(\); return; \}/.test(srcT), 'niente segno se non si mostra');
+
+  /* gli inneschi, spiati: sotto ?fast il fumetto non si apre, ma la richiesta
+     passa comunque da tipDopo e la si puo- contare */
+  const chiesti = [];
+  const veroTipDopo = g.tipDopo;
+  g.tipDopo = function (id) { chiesti.push(id); };
+
+  setup(g,{wave:40, el:'fire', attacks:{fire:9,water:1,nature:1,light:5,darkness:1}});
+  g.renderAttacks();
+  check('il fumetto della luce si chiede quando il +1 e- a schermo',
+        chiesti.indexOf('light') >= 0 && !!DOC.querySelector('.atk.light .atk-mark'),
+        chiesti.join(','));
+
+  chiesti.length = 0;
+  setup(g,{wave:40, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.enemy.hp = 40;
+  await g.attack('darkness');
+  check('quello del buio dopo un colpo che non uccide',
+        chiesti.indexOf('darkness') >= 0 && g.enemy.hp > 0, chiesti.join(','));
+
+  chiesti.length = 0;
+  setup(g,{wave:40, el:'fire', attacks:{fire:9,water:9,nature:9,light:9,darkness:9}});
+  g.enemy.hp = 3;
+  await g.attack('darkness');
+  check('ma non sul colpo che uccide', chiesti.indexOf('darkness') < 0, chiesti.join(','));
+  g.tipDopo = veroTipDopo;
 
   /* l-interruttore vero, nelle impostazioni: quello sopravvive allo spegnimento */
   const swTips = DOC.getElementById('btn-tips');

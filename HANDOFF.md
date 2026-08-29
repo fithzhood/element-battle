@@ -424,12 +424,22 @@ turno. Adesso **la prima volta che succedono** esce un fumetto con la punta sul
 punto che spiegano (`Tips` e `TIP_TESTI` in `element.js`, cinque eventi:
 `light`, `darkness`, `mod`, `quest`, `challenge`).
 
-- **due livelli, e uno solo sopravvive allo spegnimento.** `Tips.visti` e
-  `Tips.off` vivono *solo in memoria*: riaprendo il gioco i fumetti
-  ricominciano da capo, ed e' voluto — la casella sul fumetto (*Stop tips for
-  this run*) vale per la partita in corso, non per sempre. Quella per sempre e'
-  l'interruttore **Tips** nel pannello `?`, che sta in `elementBattle.tipsOff`.
-  Riaccenderlo azzera anche i visti, cosi' tornano tutti;
+- **ognuno esce una volta per avvio.** `Tips.visti` vive *solo in memoria*:
+  riaprendo il gioco ricominciano da capo, ed e' voluto. L'unico spegnimento
+  vero e' l'interruttore **Tips** nel pannello `?` (`elementBattle.tipsOff`);
+  riaccenderlo azzera anche i visti, cosi' tornano tutti;
+- **sul fumetto c'era una casella *basta per stavolta*: e' stata tolta, e il
+  motivo va ricordato.** Zittiva **tutti** i fumetti successivi, non solo
+  quello che si stava leggendo. Chi la spuntava sul primo — la quest, che esce
+  subito — non vedeva mai piu' quelli della luce e del buio, e sembrava che non
+  funzionassero: e' stata la causa vera di due segnalazioni. Non ripetersi lo
+  fanno gia' da soli;
+- **gli inneschi dicono quando, non solo cosa.** La luce si spiega quando il
+  `+1` e' **a schermo** (prima stava dentro al rimborso, che con la regola
+  nuova scatta di rado: si poteva vedere il bollino per venti onde senza che
+  nessuno lo spiegasse). Il buio **dopo** il colpo e solo se il mostro e'
+  ancora in piedi: su quello che uccide finirebbe sopra le ricompense, a
+  spiegare una cosa ormai passata;
 - **sotto `?fast` non escono mai**, se no bloccherebbero il bot ad aspettare un
   tocco — stessa guardia dei pannelli;
 - si aprono con `tipDopo()`, che aspetta la fine del disegno: il fumetto si
