@@ -799,6 +799,19 @@ async function run(){
   await nextTick(); await nextTick();
   check('e si passa subito all-onda dopo', g.wave===12 && g.phase==='fight', g.wave+'/'+g.phase);
 
+  head('Audio: spento finche- non lo si accende');
+  const src2 = await fetch(CLEAR ? 'element-clear.js' : 'element.js').then(r => r.text());
+  check('la scelta di serie e- spento, per i suoni',
+        /getItem\('elementBattle\.sound'\) === 'on'/.test(src2), 'sound');
+  check('e per la musica',
+        /getItem\('elementBattle\.music'\) === 'on'/.test(src2), 'music');
+  check('gli interruttori stanno nel prontuario, non nella barra',
+        !!DOC.querySelector('#help-switches #btn-sound') &&
+        !!DOC.querySelector('#help-switches #btn-music'));
+  check('e la barra non trabocca piu-',
+        DOC.getElementById('topbar').scrollWidth <= DOC.getElementById('topbar').clientWidth + 1,
+        DOC.getElementById('topbar').scrollWidth + ' su ' + DOC.getElementById('topbar').clientWidth);
+
   head('Versione in schermata');
   g.showStart();
   const ver = DOC.getElementById('start-ver').textContent;
