@@ -969,7 +969,32 @@ async function run(){
         JSON.parse(LS.getItem('elementBattle.tipsSeen')).indexOf('darkness') >= 0);
   LS.setItem('elementBattle.tips', 'off');
   check('e la casella li spegne tutti', LS.getItem('elementBattle.tips')==='off');
-  LS.removeItem('elementBattle.tips');
+  check('due richiesti insieme si mettono in fila, non si sovrascrivono',
+        /if \(this\.tipAperto\) \{/.test(srcT) && /Tips\.coda\.push/.test(srcT), 'coda');
+  check('e quello che non si e- potuto mostrare non risulta visto',
+        /\{ this\.prossimoTip\(\); return; \}/.test(srcT), 'niente segno se non si mostra');
+
+  /* il pulsante che li riaccende, provato davvero. Il modulo tiene lo stato in
+     memoria, non nel magazzino: va sporcato li-, se no il pulsante e- spento a
+     ragione perche' non c-e- niente da riaccendere */
+  const T = DOC.defaultView.__elTips;
+  g.showHelp();
+  check('senza niente da riaccendere il pulsante e- spento',
+        DOC.querySelector('#help-notes .help-tips').disabled===true);
+  DOC.getElementById('btn-help-go').click();
+  T.segna('darkness');
+  g.showHelp();
+  const rivedi = DOC.querySelector('#help-notes .help-tips');
+  check('visto un fumetto, il prontuario offre di rivederli',
+        !!rivedi && rivedi.disabled===false, rivedi && rivedi.disabled);
+  rivedi.click();
+  check('e riaccenderli svuota magazzino e memoria',
+        LS.getItem('elementBattle.tips')===null && LS.getItem('elementBattle.tipsSeen')===null &&
+        T.visti.size===0 && T.off===false,
+        LS.getItem('elementBattle.tipsSeen') + ' / in memoria ' + T.visti.size);
+  check('il pulsante si spegne da solo, non c-e- piu- niente da riaccendere',
+        rivedi.disabled===true);
+  DOC.getElementById('btn-help-go').click();
   if (primaVisti === null) LS.removeItem('elementBattle.tipsSeen');
   else LS.setItem('elementBattle.tipsSeen', primaVisti);
 

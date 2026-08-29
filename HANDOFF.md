@@ -430,7 +430,17 @@ punto che spiegano (`Tips` e `TIP_TESTI` in `element.js`, cinque eventi:
   tocco — stessa guardia dei pannelli;
 - si aprono con `tipDopo()`, che aspetta la fine del disegno: il fumetto si
   posiziona **misurando** il bersaglio, e chiamato in mezzo a una `render*`
-  misurerebbe un elemento che sta ancora prendendo posto.
+  misurerebbe un elemento che sta ancora prendendo posto;
+- **uno alla volta, gli altri in fila.** Difetto vero, trovato giocando: due
+  fumetti chiesti nello stesso istante si sovrascrivevano, e quello coperto
+  restava segnato come *già visto* senza che nessuno l'avesse letto. Succede
+  all'onda 11, dove quest e modificatore arrivano insieme. Ora chi arriva
+  secondo aspetta il suo turno, e **chi non riesce a mostrarsi non viene
+  segnato** (bersaglio nascosto o non ancora a schermo);
+- nel prontuario `?` c'è **Show tips again**: senza, un fumetto saltato era
+  perso per sempre. Attenzione: lo stato vive **in memoria** (`Tips.visti`,
+  `Tips.off`), non solo nel magazzino — toccare il `localStorage` da fuori non
+  cambia il pulsante, come ha scoperto il banco.
 
 Per fotografarne uno: `_shot.html?drive=tip&quale=darkness&scorda=1` — `scorda`
 svuota il magazzino dei visti **prima** che parta la pagina del gioco.
